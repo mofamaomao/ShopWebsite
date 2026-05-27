@@ -12,24 +12,24 @@
     </resultMap>
 
     <select id="findById" resultMap="UserResultMap">
-        SELECT * FROM user WHERE id = #{id}
+        SELECT * FROM `user` WHERE id = #{id}
     </select>
 
     <select id="findByPhone" resultMap="UserResultMap">
-        SELECT * FROM user WHERE phone = #{phone}
+        SELECT * FROM `user` WHERE phone = #{phone}
     </select>
 
     <select id="findAll" resultMap="UserResultMap">
-        SELECT * FROM user ORDER BY created_at DESC
+        SELECT * FROM `user` ORDER BY created_at DESC
     </select>
 
     <insert id="insert" parameterType="User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (phone, password, nickname, created_at)
+        INSERT INTO `user` (phone, password, nickname, created_at)
         VALUES (#{phone}, #{password}, #{nickname}, NOW())
     </insert>
 
     <update id="update" parameterType="User">
-        UPDATE user
+        UPDATE `user`
         <set>
             <if test="phone != null">phone = #{phone},</if>
             <if test="password != null">password = #{password},</if>
@@ -39,7 +39,7 @@
     </update>
 
     <delete id="deleteById">
-        DELETE FROM user WHERE id = #{id}
+        DELETE FROM `user` WHERE id = #{id}
     </delete>
 
 </mapper>
