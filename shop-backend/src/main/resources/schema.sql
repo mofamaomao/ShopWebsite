@@ -38,3 +38,22 @@ CREATE TABLE IF NOT EXISTS `order` (
     KEY `idx_user_id` (`user_id`),
     CONSTRAINT `fk_order_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
+
+-- 订单明细表
+CREATE TABLE IF NOT EXISTS `order_item` (
+    `id`         BIGINT         NOT NULL AUTO_INCREMENT COMMENT '明细ID',
+    `order_id`   BIGINT         NOT NULL COMMENT '订单ID',
+    `product_id` BIGINT         NOT NULL COMMENT '商品ID',
+    `quantity`   INT            NOT NULL COMMENT '购买数量',
+    `price`      DECIMAL(10, 2) NOT NULL COMMENT '下单时单价',
+    PRIMARY KEY (`id`),
+    KEY `idx_order_id` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+-- 商品种子数据
+INSERT IGNORE INTO `product` (id, name, price, stock, category, description) VALUES
+(1, 'iPhone 15 Pro', 9999.00, 100, '手机', '苹果旗舰手机，A17 Pro 芯片'),
+(2, '小米14', 3999.00, 200, '手机', '小米旗舰，骁龙8Gen3'),
+(3, 'MacBook Pro 14', 14999.00, 50, '电脑', 'M3 Pro 芯片，专业创作利器'),
+(4, 'AirPods Pro', 1899.00, 300, '耳机', '主动降噪，空间音频'),
+(5, '机械键盘 Cherry MX', 599.00, 150, '外设', 'Cherry 红轴，RGB 背光');

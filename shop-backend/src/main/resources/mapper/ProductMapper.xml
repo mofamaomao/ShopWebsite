@@ -17,8 +17,23 @@
         SELECT * FROM product WHERE id = #{id}
     </select>
 
+    <select id="findByIdForUpdate" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE id = #{id} FOR UPDATE
+    </select>
+
     <select id="findAll" resultMap="ProductResultMap">
         SELECT * FROM product ORDER BY id DESC
+    </select>
+
+    <select id="findByKeyword" resultMap="ProductResultMap">
+        SELECT * FROM product
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (name LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY id DESC
     </select>
 
     <select id="findByCategory" resultMap="ProductResultMap">
@@ -41,6 +56,11 @@
             <if test="description != null">description = #{description},</if>
         </set>
         WHERE id = #{id}
+    </update>
+
+    <update id="decreaseStock">
+        UPDATE product SET stock = stock - #{quantity}
+        WHERE id = #{id} AND stock >= #{quantity}
     </update>
 
     <delete id="deleteById">

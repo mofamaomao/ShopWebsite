@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.OrderItemMapper">
+
+    <resultMap id="OrderItemResultMap" type="OrderItem">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="quantity" column="quantity"/>
+        <result property="price" column="price"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="OrderItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_item (order_id, product_id, quantity, price)
+        VALUES (#{orderId}, #{productId}, #{quantity}, #{price})
+    </insert>
+
+    <select id="findByOrderId" resultMap="OrderItemResultMap">
+        SELECT * FROM order_item WHERE order_id = #{orderId}
+    </select>
+
+</mapper>
