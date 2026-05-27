@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.UserMapper">
+
+    <resultMap id="UserResultMap" type="User">
+        <id property="id" column="id"/>
+        <result property="phone" column="phone"/>
+        <result property="password" column="password"/>
+        <result property="nickname" column="nickname"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findById" resultMap="UserResultMap">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+
+    <select id="findByPhone" resultMap="UserResultMap">
+        SELECT * FROM user WHERE phone = #{phone}
+    </select>
+
+    <select id="findAll" resultMap="UserResultMap">
+        SELECT * FROM user ORDER BY created_at DESC
+    </select>
+
+    <insert id="insert" parameterType="User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (phone, password, nickname, created_at)
+        VALUES (#{phone}, #{password}, #{nickname}, NOW())
+    </insert>
+
+    <update id="update" parameterType="User">
+        UPDATE user
+        <set>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+</mapper>

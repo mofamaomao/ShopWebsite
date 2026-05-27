@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.ProductMapper">
+
+    <resultMap id="ProductResultMap" type="Product">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="price" column="price"/>
+        <result property="stock" column="stock"/>
+        <result property="category" column="category"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <select id="findById" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultMap="ProductResultMap">
+        SELECT * FROM product ORDER BY id DESC
+    </select>
+
+    <select id="findByCategory" resultMap="ProductResultMap">
+        SELECT * FROM product WHERE category = #{category} ORDER BY id DESC
+    </select>
+
+    <insert id="insert" parameterType="Product" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (name, price, stock, category, image_url, description)
+        VALUES (#{name}, #{price}, #{stock}, #{category}, #{imageUrl}, #{description})
+    </insert>
+
+    <update id="update" parameterType="Product">
+        UPDATE product
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM product WHERE id = #{id}
+    </delete>
+
+</mapper>

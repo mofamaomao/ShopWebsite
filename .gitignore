@@ -1,0 +1,14 @@
+# Backend
+shop-backend/target/
+shop-backend/*.log
+shop-backend/.env
+
+# Frontend
+shop-frontend/node_modules/
+shop-frontend/dist/
+shop-frontend/.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
