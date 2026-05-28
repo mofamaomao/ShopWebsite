@@ -1,16 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: () => import('@/views/HomeView.vue'),
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/LoginView.vue'),
-  },
+  { path: '/', name: 'Home', component: () => import('@/views/HomeView.vue') },
+  { path: '/login', name: 'Login', component: () => import('@/views/LoginView.vue') },
+  { path: '/register', name: 'Register', component: () => import('@/views/RegisterView.vue') },
+  { path: '/product/:id', name: 'Product', component: () => import('@/views/ProductView.vue') },
+  { path: '/cart', name: 'Cart', meta: { requiresAuth: true }, component: () => import('@/views/CartView.vue') },
+  { path: '/order-success', name: 'OrderSuccess', meta: { requiresAuth: true }, component: () => import('@/views/OrderSuccessView.vue') },
 ]
 
 const router = createRouter({
@@ -18,12 +14,8 @@ const router = createRouter({
   routes,
 })
 
-// 路由守卫：需要登录的页面检查 token
 router.beforeEach((to, from, next) => {
-  const publicPages = ['/login']
-  const requiresAuth = !publicPages.includes(to.path)
-  const token = localStorage.getItem('token')
-  if (requiresAuth && !token) {
+  if (to.meta.requiresAuth && !localStorage.getItem('token')) {
     return next('/login')
   }
   next()

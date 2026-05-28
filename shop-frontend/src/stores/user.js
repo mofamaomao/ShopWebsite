@@ -1,26 +1,29 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import http from '@/api/http'
+import { ref, computed } from 'vue'
+import { login as loginApi, register as registerApi } from '@/api/auth'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
-  const userInfo = ref(null)
+  const nickname = ref(localStorage.getItem('nickname') || '')
 
-  function setToken(newToken) {
-    token.value = newToken
-    localStorage.setItem('token', newToken)
+  const isLoggedIn = computed(() => !!token.value)
+
+  async function login(phone, password) {
+    const data = await loginApi({ phone, password })
+    token.value = data.token
+    localStorage.setItem('token', data.token)
+  }
+
+  async function register(phone, password, nicknameVal) {
+    await registerApi({ phone, password, nickname: nicknameVal })
   }
 
   function logout() {
     token.value = ''
-    userInfo.value = null
+    nickname.value = ''
     localStorage.removeItem('token')
+    localStorage.removeItem('nickname')
   }
 
-  async function fetchUserInfo() {
-    const data = await http.get('/user/me')
-    userInfo.value = data
-  }
-
-  return { token, userInfo, setToken, logout, fetchUserInfo }
+  return { token, nickname, isLoggedIn, login, register, logout }
 })
