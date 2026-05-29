@@ -30,7 +30,7 @@ Check "has price field"   ($null -ne $r.data.list[0].price)
 
 # 2. Pagination
 Title "2. Pagination pageSize=2"
-$pageUrl = "$BASE/products?pageNum=1" + $AMP + "pageSize=2"
+$pageUrl = "$BASE/products?page=1" + $AMP + "size=2"
 $r2 = ApiGet $pageUrl
 $c2 = $r2.data.list.Count; Check "list.Count <= 2" ($c2 -le 2) "count=$c2"
 Check "total unchanged"   ($r2.data.total -ge 5)
@@ -43,7 +43,7 @@ Check "id=1"              ($p.data.id -eq 1)
 Check "name not empty"    ($p.data.name -ne "")
 Check "price > 0"         ($p.data.price -gt 0)
 Check "stock >= 0"        ($p.data.stock -ge 0)
-$pid = $p.data.id
+$prodId = $p.data.id
 Write-Host "    $($p.data.name)  price:$($p.data.price)  stock:$($p.data.stock)" -ForegroundColor Gray
 
 # 4. Register
@@ -65,9 +65,9 @@ Write-Host "    Token: $($tk.Substring(0,30))..." -ForegroundColor Gray
 
 # 6. Add to cart
 Title "6. POST /api/cart (add)"
-$a1 = ApiPost "$BASE/cart" @{ productId=$pid; quantity=2 } $AUTH
+$a1 = ApiPost "$BASE/cart" @{ productId=$prodId; quantity=2 } $AUTH
 Check "1st add code=200"  ($a1.code -eq 200)
-$a2 = ApiPost "$BASE/cart" @{ productId=$pid; quantity=2 } $AUTH
+$a2 = ApiPost "$BASE/cart" @{ productId=$prodId; quantity=2 } $AUTH
 Check "2nd add code=200"  ($a2.code -eq 200)
 
 # 7. Get cart
@@ -75,7 +75,7 @@ Title "7. GET /api/cart"
 $cart = ApiGet "$BASE/cart" $AUTH
 Check "code=200"           ($cart.code -eq 200)
 $ic = $cart.data.items.Count; Check "items >= 1" ($ic -ge 1) "count=$ic"
-$item = $cart.data.items | Where-Object { $_.productId -eq $pid } | Select-Object -First 1
+$item = $cart.data.items | Where-Object { $_.productId -eq $prodId } | Select-Object -First 1
 Check "product in cart"    ($null -ne $item)
 $iq = $item.quantity; Check "qty accumulated = 4" ($iq -eq 4) "qty=$iq"
 $expect = [math]::Round($item.price * $item.quantity, 2)
@@ -86,7 +86,7 @@ Write-Host "    cart total: $($cart.data.total)" -ForegroundColor Gray
 
 # 8. Create order
 Title "8. POST /api/orders"
-$orderObj = @{ items = @( @{ productId=$pid; quantity=1 } ) }
+$orderObj = @{ items = @( @{ productId=$prodId; quantity=1 } ) }
 $order = ApiPost "$BASE/orders" $orderObj $AUTH
 Check "code=200"           ($order.code -eq 200)
 $oid = $order.data.orderId; Check "orderId > 0"    ($oid -gt 0)           "orderId=$oid"
