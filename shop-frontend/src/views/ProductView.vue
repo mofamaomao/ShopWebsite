@@ -13,9 +13,9 @@
             库存：{{ product.stock }} 件
           </div>
           <div class="actions">
-            <el-input-number v-model="qty" :min="1" :max="product.stock" />
+            <el-input-number v-model="qty" :min="1" :max="product.stock" :disabled="product.stock === 0" />
             <el-button type="primary" size="large" :disabled="product.stock === 0" @click="handleAddCart">
-              加入购物车
+              {{ product.stock === 0 ? '已售罄' : '加入购物车' }}
             </el-button>
           </div>
         </div>
@@ -55,6 +55,11 @@ async function handleAddCart() {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
     router.push('/login')
+    return
+  }
+  if (qty.value > product.value.stock) {
+    ElMessage.warning(`数量不能超过库存（${product.value.stock} 件）`)
+    qty.value = product.value.stock
     return
   }
   try {
