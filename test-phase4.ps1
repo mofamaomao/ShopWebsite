@@ -65,8 +65,9 @@ Title "TC-02: Keyword search (API)"
 $kwUrl  = "$BackendUrl/products?keyword=iPhone"
 $kwRes  = ApiGet $kwUrl
 Check "TC-02" "keyword=iPhone code=200"  ($kwRes.code -eq 200)
-$hits = $kwRes.data.list | Where-Object { $_.name -match "iPhone" -or $_.description -match "iPhone" }
-Check "TC-02" "all results match keyword" ($hits.Count -eq $kwRes.data.list.Count) "hits=$($hits.Count) total=$($kwRes.data.list.Count)"
+$hits    = @($kwRes.data.list | Where-Object { $_.name -match "iPhone" -or $_.description -match "iPhone" })
+$allList = @($kwRes.data.list)
+Check "TC-02" "all results match keyword" ($hits.Count -eq $allList.Count) "hits=$($hits.Count) total=$($allList.Count)"
 
 $noHitUrl = "$BackendUrl/products?keyword=XYZNOTEXIST999"
 $noHit = ApiGet $noHitUrl
