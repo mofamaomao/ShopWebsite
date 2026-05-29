@@ -16,7 +16,7 @@ export const useCartStore = defineStore('cart', () => {
 
   async function addItem(productId, qty) {
     await addToCartApi({ productId, quantity: qty })
-    cartCount.value += qty
+    await fetchCount()
   }
 
   return { cartCount, fetchCount, addItem }

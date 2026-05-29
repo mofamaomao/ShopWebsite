@@ -14,7 +14,10 @@
           </div>
           <div class="actions">
             <el-input-number v-model="qty" :min="1" :max="product.stock" :disabled="product.stock === 0" />
-            <el-button type="primary" size="large" :disabled="product.stock === 0" @click="handleAddCart">
+            <el-button type="primary" size="large"
+              :disabled="product.stock === 0"
+              :loading="adding"
+              @click="handleAddCart">
               {{ product.stock === 0 ? '已售罄' : '加入购物车' }}
             </el-button>
           </div>
@@ -40,6 +43,7 @@ const userStore = useUserStore()
 const cartStore = useCartStore()
 const product = ref(null)
 const loading = ref(false)
+const adding = ref(false)
 const qty = ref(1)
 
 onMounted(async () => {
@@ -52,6 +56,7 @@ onMounted(async () => {
 })
 
 async function handleAddCart() {
+  if (adding.value) return
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
     router.push('/login')
@@ -62,11 +67,14 @@ async function handleAddCart() {
     qty.value = product.value.stock
     return
   }
+  adding.value = true
   try {
     await cartStore.addItem(product.value.id, qty.value)
     ElMessage.success('已加入购物车')
   } catch (err) {
     ElMessage.error(err.message || '操作失败')
+  } finally {
+    adding.value = false
   }
 }
 </script>
