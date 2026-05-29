@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getCart, addToCart as addToCartApi } from '@/api/cart'
+import { getCart, addToCart as addToCartApi, updateCartItem as updateApi, removeCartItem as removeApi } from '@/api/cart'
 
 export const useCartStore = defineStore('cart', () => {
   const cartCount = ref(0)
@@ -19,5 +19,15 @@ export const useCartStore = defineStore('cart', () => {
     await fetchCount()
   }
 
-  return { cartCount, fetchCount, addItem }
+  async function updateItem(productId, quantity) {
+    await updateApi(productId, quantity)
+    await fetchCount()
+  }
+
+  async function removeItem(productId) {
+    await removeApi(productId)
+    await fetchCount()
+  }
+
+  return { cartCount, fetchCount, addItem, updateItem, removeItem }
 })

@@ -8,9 +8,29 @@
           <el-table-column label="单价" width="120">
             <template #default="{ row }">¥{{ row.price }}</template>
           </el-table-column>
-          <el-table-column prop="quantity" label="数量" width="100" />
+          <el-table-column label="数量" width="180">
+            <template #default="{ row }">
+              <el-input-number
+                v-model="row.quantity"
+                :min="1"
+                :max="row.stock"
+                size="small"
+                @change="(val) => handleQuantityChange(row, val)"
+              />
+            </template>
+          </el-table-column>
           <el-table-column label="小计" width="120">
             <template #default="{ row }">¥{{ row.subtotal }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="100">
+            <template #default="{ row }">
+              <el-button
+                type="danger"
+                size="small"
+                text
+                @click="handleRemove(row)"
+              >删除</el-button>
+            </template>
           </el-table-column>
         </el-table>
         <div class="cart-footer">
@@ -33,20 +53,44 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCart } from '@/api/cart'
 import { createOrder } from '@/api/order'
+import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
+const cartStore = useCartStore()
 const cart = ref(null)
 const loading = ref(false)
 const ordering = ref(false)
 
-onMounted(async () => {
+async function fetchCart() {
   loading.value = true
   try {
     cart.value = await getCart()
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(fetchCart)
+
+async function handleQuantityChange(row, val) {
+  if (!val || val < 1) return
+  try {
+    await cartStore.updateItem(row.productId, val)
+    await fetchCart()
+  } catch (err) {
+    ElMessage.error(err.message || '更新失败')
+    await fetchCart()
+  }
+}
+
+async function handleRemove(row) {
+  try {
+    await cartStore.removeItem(row.productId)
+    await fetchCart()
+  } catch (err) {
+    ElMessage.error(err.message || '删除失败')
+  }
+}
 
 async function handleCheckout() {
   const items = cart.value.items.map(i => ({ productId: i.productId, quantity: i.quantity }))

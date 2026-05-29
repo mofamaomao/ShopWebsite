@@ -57,6 +57,7 @@ public class CartServiceImpl implements CartService {
             item.setPrice(product.getPrice());
             item.setQuantity(quantity);
             item.setSubtotal(subtotal);
+            item.setStock(product.getStock());
             items.add(item);
         }
 
@@ -64,5 +65,19 @@ public class CartServiceImpl implements CartService {
         cart.setItems(items);
         cart.setTotal(total);
         return cart;
+    }
+
+    @Override
+    public void updateItem(Long userId, Long productId, int quantity) {
+        redisTemplate.opsForHash().put(
+                CART_PREFIX + userId,
+                String.valueOf(productId),
+                String.valueOf(quantity)
+        );
+    }
+
+    @Override
+    public void removeItem(Long userId, Long productId) {
+        redisTemplate.opsForHash().delete(CART_PREFIX + userId, String.valueOf(productId));
     }
 }

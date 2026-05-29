@@ -2,6 +2,7 @@ package com.shop.controller;
 
 import com.shop.common.Result;
 import com.shop.dto.CartAddRequest;
+import com.shop.dto.CartUpdateRequest;
 import com.shop.service.CartService;
 import com.shop.vo.CartVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,5 +34,24 @@ public class CartController {
     public Result<CartVO> get(Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         return Result.ok(cartService.getCart(userId));
+    }
+
+    @Operation(summary = "更新购物车商品数量")
+    @PutMapping("/{productId}")
+    public Result<Void> update(@PathVariable Long productId,
+                               @Valid @RequestBody CartUpdateRequest request,
+                               Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        cartService.updateItem(userId, productId, request.getQuantity());
+        return Result.ok();
+    }
+
+    @Operation(summary = "删除购物车商品")
+    @DeleteMapping("/{productId}")
+    public Result<Void> remove(@PathVariable Long productId,
+                               Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        cartService.removeItem(userId, productId);
+        return Result.ok();
     }
 }
