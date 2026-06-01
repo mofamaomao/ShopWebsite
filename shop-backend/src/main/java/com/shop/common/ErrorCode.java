@@ -16,7 +16,8 @@ public enum ErrorCode {
     PASSWORD_WRONG(1002, "手机号或密码错误"),
     STOCK_INSUFFICIENT(1003, "库存不足"),
     PRODUCT_NOT_FOUND(1004, "商品不存在"),
-    SECKILL_STOCK_EMPTY(1005, "库存不足，手慢了");
+    SECKILL_STOCK_EMPTY(1005, "库存不足，手慢了"),
+    SYSTEM_BUSY(1006, "系统繁忙，请稍后重试");
 
     private final int code;
     private final String msg;
