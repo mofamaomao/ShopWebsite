@@ -13,4 +13,8 @@ public class Product {
     private String category;
     private String imageUrl;
     private String description;
+    // 秒杀扩展字段
+    private Integer isSeckill;
+    private Integer seckillStock;
+    private BigDecimal seckillPrice;
 }

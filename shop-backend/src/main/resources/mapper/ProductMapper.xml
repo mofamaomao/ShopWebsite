@@ -67,4 +67,8 @@
         DELETE FROM product WHERE id = #{id}
     </delete>
 
+    <select id="findSeckillStockById" resultType="java.lang.Integer">
+        SELECT seckill_stock FROM product WHERE id = #{id} AND is_seckill = 1
+    </select>
+
 </mapper>

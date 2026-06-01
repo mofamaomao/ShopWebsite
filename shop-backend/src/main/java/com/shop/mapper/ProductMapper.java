@@ -27,4 +27,7 @@ public interface ProductMapper {
     int decreaseStock(@Param("id") Long id, @Param("quantity") int quantity);
 
     int deleteById(Long id);
+
+    /** 查询秒杀库存（is_seckill=1 才返回，否则 null） */
+    Integer findSeckillStockById(Long id);
 }
