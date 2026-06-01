@@ -61,7 +61,7 @@ Write-Host "[SETUP] MySQL: $mysqlOk  (raw='$dbTest')"
 # --- Auth diagnostic: register + login one account to verify the API works ---
 Write-Host '[SETUP] Auth diagnostic...' -ForegroundColor Cyan
 $diagPhone = '13900000777'
-$diagJson  = '{"phone":"13900000777","password":"DiagPass99"}'
+$diagJson  = '{"phone":"13900000777","password":"DiagPass99","nickname":"DiagUser"}'
 $regResp   = PostJson "$BASE/api/auth/register" $diagJson
 $loginResp = PostJson "$BASE/api/auth/login"    $diagJson
 Write-Host "[SETUP] Register: code=$($regResp.code)  msg=$($regResp.msg)"
@@ -74,7 +74,7 @@ Write-Host '[SETUP] Registering 20 test accounts...' -ForegroundColor Cyan
 $tokens = @()
 for ($i = 1; $i -le 20; $i++) {
     $ph   = '138' + $phoneSuffix + ('{0:D2}' -f $i)
-    $json = '{"phone":"' + $ph + '","password":"SeckillTest1"}'
+    $json = '{"phone":"' + $ph + '","password":"SeckillTest1","nickname":"U' + $i + '"}'
     PostJson "$BASE/api/auth/register" $json | Out-Null
     $lr   = PostJson "$BASE/api/auth/login" $json
     $tokens += $lr.data.token
