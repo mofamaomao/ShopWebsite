@@ -1,18 +1,4 @@
 {
-  "settings": {
-    "analysis": {
-      "analyzer": {
-        "ik_max_word": {
-          "type": "custom",
-          "tokenizer": "ik_max_word"
-        },
-        "ik_smart": {
-          "type": "custom",
-          "tokenizer": "ik_smart"
-        }
-      }
-    }
-  },
   "mappings": {
     "properties": {
       "id": {
@@ -20,13 +6,11 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "analyzer": "standard"
       },
       "description": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "analyzer": "standard"
       },
       "category": {
         "type": "keyword"
@@ -45,7 +29,7 @@
         "index": false
       },
       "created_at": {
-        "type": "date"
+        "type": "long"
       }
     }
   }
