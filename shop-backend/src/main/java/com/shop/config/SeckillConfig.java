@@ -23,4 +23,12 @@ public class SeckillConfig {
         script.setResultType(Long.class);
         return script;
     }
+
+    @Bean("orderDeductScript")
+    public DefaultRedisScript<Long> orderDeductScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("lua/order_deduct.lua"));
+        script.setResultType(Long.class);
+        return script;
+    }
 }

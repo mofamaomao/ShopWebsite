@@ -11,6 +11,8 @@ public interface OrderMapper {
 
     Optional<Order> findById(Long id);
 
+    boolean existsByOrderNo(String orderNo);
+
     List<Order> findByUserId(Long userId);
 
     List<Order> findAll();

@@ -11,6 +11,9 @@ public final class RedisKeyConstants {
     // 普通下单分布式锁：order:lock:{userId}
     public static final String ORDER_LOCK = "order:lock:";
 
+    // 普通订单 Redis 预扣库存：order:stock:{productId}
+    public static final String ORDER_STOCK_PREFIX = "order:stock:";
+
     // 商品详情缓存：product:detail:{id}
     public static final String PRODUCT_DETAIL_PREFIX = "product:detail:";
 
@@ -34,6 +37,10 @@ public final class RedisKeyConstants {
 
     public static String rateLimitKey(Long userId) {
         return RATE_LIMIT_TOKEN_PREFIX + userId;
+    }
+
+    public static String orderStockKey(Long productId) {
+        return ORDER_STOCK_PREFIX + productId;
     }
 
     private RedisKeyConstants() {}

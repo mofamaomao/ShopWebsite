@@ -17,6 +17,10 @@ public class Result<T> {
         return new Result<>(200, "success", data);
     }
 
+    public static <T> Result<T> ok(String msg, T data) {
+        return new Result<>(200, msg, data);
+    }
+
     public static Result<Void> ok() {
         return new Result<>(200, "success", null);
     }

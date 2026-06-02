@@ -20,6 +20,20 @@ spring:
     connection-timeout: 5s
     socket-timeout: 30s
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASS:admin123}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        retry:
+          enabled: true
+          max-attempts: 3
+
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.shop.entity

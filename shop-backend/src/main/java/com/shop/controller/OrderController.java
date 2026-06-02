@@ -22,11 +22,12 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @Operation(summary = "创建订单", description = "SELECT FOR UPDATE 锁行校验库存，原子扣减后写入订单")
+    @Operation(summary = "创建订单", description = "Redis 预扣库存 + MQ 异步写 DB，立即返回 orderId")
     @PostMapping
     public Result<OrderVO> create(@Valid @RequestBody OrderCreateRequest request,
                                   Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return Result.ok(orderService.createOrder(userId, request));
+        OrderVO vo = orderService.createOrder(userId, request);
+        return Result.ok("订单处理中", vo);
     }
 }
