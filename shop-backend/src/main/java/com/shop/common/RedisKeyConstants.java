@@ -8,6 +8,9 @@ public final class RedisKeyConstants {
     // 令牌桶限流：ratelimit:token:{userId}
     public static final String RATE_LIMIT_TOKEN_PREFIX = "ratelimit:token:";
 
+    // 普通下单分布式锁：order:lock:{userId}
+    public static final String ORDER_LOCK = "order:lock:";
+
     public static String seckillStockKey(Long productId) {
         return SECKILL_STOCK_PREFIX + productId;
     }
