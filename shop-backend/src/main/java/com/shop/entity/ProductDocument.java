@@ -8,7 +8,7 @@ import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 @Data
-@Document(indexName = EsConstants.PRODUCT_INDEX)
+@Document(indexName = EsConstants.PRODUCT_INDEX, createIndex = false)
 public class ProductDocument {
 
     @Id
@@ -35,6 +35,6 @@ public class ProductDocument {
     @Field(type = FieldType.Keyword, index = false)
     private String imageUrl;
 
-    @Field(type = FieldType.Date)
+    @Field(type = FieldType.Long)
     private Long createdAt;
 }
