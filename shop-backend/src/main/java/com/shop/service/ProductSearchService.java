@@ -1,6 +1,8 @@
 package com.shop.service;
 
 import com.shop.entity.Product;
+import com.shop.vo.PageVO;
+import com.shop.vo.ProductVO;
 
 import java.util.List;
 
@@ -14,4 +16,10 @@ public interface ProductSearchService {
 
     /** Delete a product document. On failure: logs + writes sync_fail_log. */
     void syncDelete(Long productId);
+
+    /**
+     * Full-text search via ES multi_match on name/description.
+     * Returns highlight-enriched ProductVO list.
+     */
+    PageVO<ProductVO> search(String keyword, int page, int size);
 }

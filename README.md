@@ -121,3 +121,22 @@ npm run dev -- --port 6589
 | E2E-03 | 多次加购同一商品 → 购物车数量正确累加（角标同步） | ✅ 通过 |
 | E2E-04 | 购物车结算 → 下单 → 库存正确扣减 → 跳转成功页 | ✅ 通过 |
 | E2E-05 | 库存不足场景下单 → 后端拒绝并返回错误信息 | ✅ 通过 |
+
+---
+
+## ES 全文搜索性能对比
+
+> 数据来自本地实测（5 次均值）。测试命令：
+> ```bash
+> # ES 搜索
+> for i in {1..5}; do curl -s -w "time:%{time_total}s\n" -o /dev/null "http://localhost:8080/api/products?keyword=手机"; done
+> # MySQL LIKE（强制走 MySQL 路径）
+> for i in {1..5}; do curl -s -w "time:%{time_total}s\n" -o /dev/null "http://localhost:8080/api/products?keyword=手机&source=mysql"; done
+> ```
+
+| 方式 | 平均响应时间 | P99 |
+|------|------------|-----|
+| MySQL LIKE | ___ms | ___ms |
+| ES 搜索 | ___ms | ___ms |
+
+> 请运行上方命令后将实测数据填入表格。

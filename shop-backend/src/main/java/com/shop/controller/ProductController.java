@@ -17,13 +17,14 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @Operation(summary = "商品列表", description = "分页 + keyword 模糊搜索 name/description")
+    @Operation(summary = "商品列表", description = "有 keyword → ES 全文搜索（含高亮）; 无 keyword → MySQL 全量分页; source=mysql → 强制走 MySQL（性能对比用）")
     @GetMapping
     public Result<PageVO<ProductVO>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "") String keyword) {
-        return Result.ok(productService.listProducts(page, size, keyword));
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "") String source) {
+        return Result.ok(productService.listProducts(page, size, keyword, source));
     }
 
     @Operation(summary = "商品详情")

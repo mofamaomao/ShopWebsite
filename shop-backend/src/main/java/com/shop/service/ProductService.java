@@ -5,7 +5,11 @@ import com.shop.vo.PageVO;
 import com.shop.vo.ProductVO;
 
 public interface ProductService {
-    PageVO<ProductVO> listProducts(int page, int size, String keyword);
+    /**
+     * @param source pass "mysql" to force MySQL path (performance testing); otherwise auto-routes
+     *               keyword→ES, no keyword→MySQL
+     */
+    PageVO<ProductVO> listProducts(int page, int size, String keyword, String source);
     ProductVO getProduct(Long id);
     ProductVO createProduct(Product product);
     ProductVO updateProduct(Long id, Product product);

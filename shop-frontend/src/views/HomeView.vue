@@ -13,7 +13,8 @@
           <el-image v-if="p.imageUrl" :src="p.imageUrl" fit="cover" style="width:100%;height:100%" />
           <el-icon v-else size="60" color="#c0c4cc"><Picture /></el-icon>
         </div>
-        <div class="product-name">{{ p.name }}</div>
+        <!-- highlightName contains only <em> tags from ES; safe for v-html -->
+        <div class="product-name" v-html="p.highlightName || p.name"></div>
         <div class="product-price">¥{{ p.price }}</div>
         <div class="product-stock">库存：{{ p.stock }}</div>
       </el-card>
@@ -107,4 +108,5 @@ watch(() => route.query.keyword, () => { page.value = 1; fetchList() })
 .product-price { color: #f56c6c; font-size: 18px; font-weight: bold; margin-bottom: 4px; }
 .product-stock { color: #909399; font-size: 12px; }
 .pagination { margin-top: 24px; justify-content: center; display: flex; }
+:deep(.search-hl) { color: #f56c6c; font-style: normal; font-weight: 600; }
 </style>

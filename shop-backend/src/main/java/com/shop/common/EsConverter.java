@@ -2,6 +2,9 @@ package com.shop.common;
 
 import com.shop.entity.Product;
 import com.shop.entity.ProductDocument;
+import com.shop.vo.ProductVO;
+
+import java.math.BigDecimal;
 
 public final class EsConverter {
 
@@ -19,5 +22,17 @@ public final class EsConverter {
         doc.setImageUrl(p.getImageUrl());
         doc.setCreatedAt(System.currentTimeMillis());
         return doc;
+    }
+
+    public static ProductVO toVO(ProductDocument doc) {
+        ProductVO vo = new ProductVO();
+        vo.setId(doc.getId());
+        vo.setName(doc.getName());
+        vo.setDescription(doc.getDescription());
+        vo.setCategory(doc.getCategory());
+        vo.setPrice(doc.getPrice() != null ? BigDecimal.valueOf(doc.getPrice()) : null);
+        vo.setStock(doc.getStock());
+        vo.setImageUrl(doc.getImageUrl());
+        return vo;
     }
 }

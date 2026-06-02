@@ -12,4 +12,6 @@ public class ProductVO {
     private String category;
     private String imageUrl;
     private String description;
+    /** ES highlight result for name field; null when not a search result */
+    private String highlightName;
 }

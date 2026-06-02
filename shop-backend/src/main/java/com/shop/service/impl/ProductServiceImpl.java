@@ -3,6 +3,7 @@ package com.shop.service.impl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import org.springframework.util.StringUtils;
 import com.shop.common.BusinessException;
 import com.shop.common.ErrorCode;
 import com.shop.common.RedisKeyConstants;
@@ -129,9 +130,23 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // ── 商品列表（不走缓存，分页直查 DB）────────────────────────────────────
+    // ── 商品列表：有 keyword 走 ES，无 keyword 或 source=mysql 走 DB ──────────
     @Override
-    public PageVO<ProductVO> listProducts(int page, int size, String keyword) {
+    public PageVO<ProductVO> listProducts(int page, int size, String keyword, String source) {
+        if (keyword != null && keyword.length() > 50) {
+            throw new BusinessException(400, "关键词过长，请控制在50字以内");
+        }
+        if (keyword != null && !keyword.isBlank() && !"mysql".equals(source)) {
+            try {
+                return productSearchService.search(keyword, page, size);
+            } catch (Exception e) {
+                log.warn("[ES] search failed, fallback to MySQL: {}", e.getMessage());
+            }
+        }
+        return listProductsByMysql(page, size, keyword);
+    }
+
+    private PageVO<ProductVO> listProductsByMysql(int page, int size, String keyword) {
         PageHelper.startPage(page, size);
         List<Product> list = productMapper.findByKeyword(keyword);
         PageInfo<Product> pageInfo = new PageInfo<>(list);
