@@ -30,6 +30,7 @@ public class SecurityConfig {
                     "/api/health", "/api/auth/**",
                     "/api/products", "/api/products/**",
                     "/api/admin/seckill/init",
+                    "/api/admin/es/init",
                     "/swagger-ui/**", "/swagger-ui.html",
                     "/v3/api-docs/**", "/api-docs/**"
                 ).permitAll()

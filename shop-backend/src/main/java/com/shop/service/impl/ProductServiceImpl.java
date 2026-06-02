@@ -8,6 +8,7 @@ import com.shop.common.ErrorCode;
 import com.shop.common.RedisKeyConstants;
 import com.shop.entity.Product;
 import com.shop.mapper.ProductMapper;
+import com.shop.service.ProductSearchService;
 import com.shop.service.ProductService;
 import com.shop.util.CacheUtil;
 import com.shop.vo.PageVO;
@@ -33,6 +34,7 @@ public class ProductServiceImpl implements ProductService {
     private static final long PRODUCT_TTL_SECONDS = 1800; // 30 min base TTL
 
     private final ProductMapper productMapper;
+    private final ProductSearchService productSearchService;
     private final RedissonClient redissonClient;
     private final RedisTemplate<String, Object> redisTemplate;
     private final CacheUtil cacheUtil;
@@ -155,6 +157,32 @@ public class ProductServiceImpl implements ProductService {
         localProductCache.invalidate(productId);
         redisTemplate.delete(RedisKeyConstants.productDetailKey(productId));
         log.info("商品缓存已清除 id={}", productId);
+    }
+
+    @Override
+    public ProductVO createProduct(Product product) {
+        productMapper.insert(product);
+        productSearchService.syncSave(product);
+        return toVO(product);
+    }
+
+    @Override
+    public ProductVO updateProduct(Long id, Product product) {
+        productMapper.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        product.setId(id);
+        productMapper.update(product);
+        Product updated = productMapper.findById(id).orElse(product);
+        productSearchService.syncSave(updated);
+        return toVO(updated);
+    }
+
+    @Override
+    public void deleteProduct(Long id) {
+        productMapper.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        productMapper.deleteById(id);
+        productSearchService.syncDelete(id);
     }
 
     private ProductVO toVO(Product p) {
