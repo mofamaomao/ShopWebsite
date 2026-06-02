@@ -1,4 +1,4 @@
-package com.shop.mapper;
+package com.shop.repository;
 
 import com.shop.entity.ProductDocument;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;

@@ -4,7 +4,7 @@ import com.shop.common.EsConverter;
 import com.shop.entity.Product;
 import com.shop.entity.ProductDocument;
 import com.shop.entity.SyncFailLog;
-import com.shop.mapper.ProductSearchRepository;
+import com.shop.repository.ProductSearchRepository;
 import com.shop.mapper.SyncFailLogMapper;
 import com.shop.service.ProductSearchService;
 import lombok.RequiredArgsConstructor;
