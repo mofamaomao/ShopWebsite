@@ -3,7 +3,6 @@ package com.shop.service.impl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import org.springframework.util.StringUtils;
 import com.shop.common.BusinessException;
 import com.shop.common.ErrorCode;
 import com.shop.common.RedisKeyConstants;
@@ -12,8 +11,9 @@ import com.shop.mapper.ProductMapper;
 import com.shop.service.ProductSearchService;
 import com.shop.service.ProductService;
 import com.shop.util.CacheUtil;
-import com.shop.vo.PageVO;
+import com.shop.vo.CategoryBucketVO;
 import com.shop.vo.ProductVO;
+import com.shop.vo.SearchResultVO;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,10 @@ import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -32,7 +35,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
-    private static final long PRODUCT_TTL_SECONDS = 1800; // 30 min base TTL
+    private static final long PRODUCT_TTL_SECONDS = 1800;
+    private static final Set<String> VALID_SORTS = Set.of("", "price_asc", "price_desc", "sales_desc");
 
     private final ProductMapper productMapper;
     private final ProductSearchService productSearchService;
@@ -43,7 +47,6 @@ public class ProductServiceImpl implements ProductService {
 
     private RBloomFilter<Long> bloomFilter;
 
-    // ── 防线一：布隆过滤器初始化 ──────────────────────────────────────────────
     @PostConstruct
     public void initBloomFilter() {
         try {
@@ -53,29 +56,24 @@ public class ProductServiceImpl implements ProductService {
             all.forEach(p -> bloomFilter.add(p.getId()));
             log.info("Bloom Filter 初始化完成，加载 {} 个商品 ID", all.size());
         } catch (Exception e) {
-            // 初始化失败降级：bloomFilter 置 null，后续跳过过滤直接查 DB
             log.warn("Bloom Filter 初始化失败，降级为全量查 DB: {}", e.getMessage());
             bloomFilter = null;
         }
     }
 
-    // ── 三级缓存查询主流程 ────────────────────────────────────────────────────
     @Override
     public ProductVO getProduct(Long id) {
-        // 防线一：布隆过滤器拦截不存在的 ID，防止缓存穿透
         if (bloomFilter != null && !bloomFilter.contains(id)) {
             log.info("Bloom Filter 拦截，商品不存在 id={}", id);
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
         }
 
-        // 第一级：本地 Caffeine 缓存（热点数据，5s TTL）
         ProductVO cached = localProductCache.getIfPresent(id);
         if (cached != null) {
             log.debug("Local cache 命中 id={}", id);
             return cached;
         }
 
-        // 第二级：Redis 缓存
         String redisKey = RedisKeyConstants.productDetailKey(id);
         ProductVO vo = (ProductVO) redisTemplate.opsForValue().get(redisKey);
         if (vo != null) {
@@ -84,7 +82,6 @@ public class ProductServiceImpl implements ProductService {
             return vo;
         }
 
-        // 防线二：分布式互斥锁防缓存击穿，只允许一个线程重建缓存
         return rebuildCache(id, redisKey);
     }
 
@@ -93,7 +90,6 @@ public class ProductServiceImpl implements ProductService {
         try {
             if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
                 try {
-                    // Double-check：拿到锁后再查一次 Redis，防止重复重建
                     ProductVO doubleCheck = (ProductVO) redisTemplate.opsForValue().get(redisKey);
                     if (doubleCheck != null) {
                         log.debug("Double-check Redis 命中 id={}", id);
@@ -101,13 +97,11 @@ public class ProductServiceImpl implements ProductService {
                         return doubleCheck;
                     }
 
-                    // 第三级：查 DB
                     log.info("DB 查询商品 id={}", id);
                     Product product = productMapper.findById(id)
                             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
                     ProductVO vo = toVO(product);
 
-                    // 防线三：随机 TTL 防缓存雪崩
                     cacheUtil.setWithRandomTTL(redisKey, vo, PRODUCT_TTL_SECONDS, TimeUnit.SECONDS);
                     localProductCache.put(id, vo);
                     return vo;
@@ -115,7 +109,6 @@ public class ProductServiceImpl implements ProductService {
                     if (lock.isHeldByCurrentThread()) lock.unlock();
                 }
             } else {
-                // 未拿到锁：降级，短暂等待后再读一次 Redis（大概率已被其他线程重建）
                 log.warn("未获取到重建锁，降级等待重试 id={}", id);
                 Thread.sleep(200);
                 ProductVO fallback = (ProductVO) redisTemplate.opsForValue().get(redisKey);
@@ -130,15 +123,39 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // ── 商品列表：有 keyword 走 ES，无 keyword 或 source=mysql 走 DB ──────────
     @Override
-    public PageVO<ProductVO> listProducts(int page, int size, String keyword, String source) {
+    public SearchResultVO listProducts(int page, int size, String keyword,
+                                       String category, BigDecimal minPrice, BigDecimal maxPrice,
+                                       String sort, String source) {
+        // Validate
         if (keyword != null && keyword.length() > 50) {
             throw new BusinessException(400, "关键词过长，请控制在50字以内");
         }
-        if (keyword != null && !keyword.isBlank() && !"mysql".equals(source)) {
+        String effectiveSort = sort != null ? sort : "";
+        if (!VALID_SORTS.contains(effectiveSort)) {
+            throw new BusinessException(400, "无效的排序参数，可选：price_asc / price_desc / sales_desc");
+        }
+        if (minPrice != null && minPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(400, "最低价不能为负数");
+        }
+        if (maxPrice != null && maxPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(400, "最高价不能为负数");
+        }
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            throw new BusinessException(400, "最低价不能大于最高价");
+        }
+
+        // Route to ES when any ES-specific param is present
+        boolean useEs = (keyword != null && !keyword.isBlank())
+                || (category != null && !category.isBlank())
+                || minPrice != null
+                || maxPrice != null
+                || !effectiveSort.isBlank();
+
+        if (useEs && !"mysql".equals(source)) {
             try {
-                return productSearchService.search(keyword, page, size);
+                return productSearchService.search(keyword, category, minPrice, maxPrice,
+                        effectiveSort, page, size);
             } catch (Exception e) {
                 log.warn("[ES] search failed, fallback to MySQL: {}", e.getMessage());
             }
@@ -146,28 +163,22 @@ public class ProductServiceImpl implements ProductService {
         return listProductsByMysql(page, size, keyword);
     }
 
-    private PageVO<ProductVO> listProductsByMysql(int page, int size, String keyword) {
+    private SearchResultVO listProductsByMysql(int page, int size, String keyword) {
         PageHelper.startPage(page, size);
         List<Product> list = productMapper.findByKeyword(keyword);
         PageInfo<Product> pageInfo = new PageInfo<>(list);
 
-        PageVO<ProductVO> pageVO = new PageVO<>();
-        pageVO.setList(list.stream().map(this::toVO).collect(Collectors.toList()));
-        pageVO.setTotal(pageInfo.getTotal());
-        pageVO.setPage(page);
-        pageVO.setSize(size);
-        return pageVO;
+        SearchResultVO result = new SearchResultVO();
+        result.setProducts(list.stream().map(this::toVO).collect(Collectors.toList()));
+        result.setTotal(pageInfo.getTotal());
+        result.setCategoryBuckets(Collections.emptyList());
+        return result;
     }
 
-    // ── 商品新增时同步布隆过滤器（Cache-Aside delete 策略）───────────────────
     public void onProductCreated(Long productId) {
-        if (bloomFilter != null) {
-            bloomFilter.add(productId);
-        }
-        // 新增不需要删缓存，尚无缓存
+        if (bloomFilter != null) bloomFilter.add(productId);
     }
 
-    // ── 商品更新时先改 DB，再删缓存（Cache-Aside）───────────────────────────
     public void evictProductCache(Long productId) {
         localProductCache.invalidate(productId);
         redisTemplate.delete(RedisKeyConstants.productDetailKey(productId));

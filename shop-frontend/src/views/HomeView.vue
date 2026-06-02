@@ -1,25 +1,60 @@
 <template>
   <div class="home-page">
-    <div class="filter-bar">共 {{ total }} 件商品{{ route.query.keyword ? `（搜索：${route.query.keyword}）` : '' }}</div>
-    <div v-loading="loading" class="product-grid">
-      <el-card
-        v-for="p in list"
-        :key="p.id"
-        class="product-card"
-        shadow="hover"
-        @click="$router.push(`/product/${p.id}`)"
-      >
-        <div class="product-img">
-          <el-image v-if="p.imageUrl" :src="p.imageUrl" fit="cover" style="width:100%;height:100%" />
-          <el-icon v-else size="60" color="#c0c4cc"><Picture /></el-icon>
-        </div>
-        <!-- highlightName contains only <em> tags from ES; safe for v-html -->
-        <div class="product-name" v-html="p.highlightName || p.name"></div>
-        <div class="product-price">¥{{ p.price }}</div>
-        <div class="product-stock">库存：{{ p.stock }}</div>
-      </el-card>
-      <el-empty v-if="!loading && list.length === 0" description="没有找到商品" style="grid-column:1/-1" />
+    <!-- Top bar: result count + sort + price range -->
+    <div class="filter-bar">
+      <span class="result-count">
+        共 {{ total }} 件商品{{ route.query.keyword ? `（搜索：${route.query.keyword}）` : '' }}
+        <span v-if="selectedCategory" class="active-filter"> · 分类：{{ selectedCategory }}</span>
+      </span>
+      <div class="filter-controls">
+        <el-select v-model="sortOption" placeholder="默认排序" style="width:130px" @change="handleFilterChange">
+          <el-option label="默认排序" value="" />
+          <el-option label="价格升序" value="price_asc" />
+          <el-option label="价格降序" value="price_desc" />
+          <el-option label="销量降序" value="sales_desc" />
+        </el-select>
+        <el-input v-model="minPriceInput" placeholder="最低价" style="width:88px" clearable @change="handleFilterChange" />
+        <span class="range-sep">~</span>
+        <el-input v-model="maxPriceInput" placeholder="最高价" style="width:88px" clearable @change="handleFilterChange" />
+      </div>
     </div>
+
+    <!-- Main layout: optional category sidebar + product grid -->
+    <div class="main-layout">
+      <div v-if="categoryBuckets.length" class="category-sidebar">
+        <div class="sidebar-title">商品分类</div>
+        <div
+          v-for="b in categoryBuckets"
+          :key="b.category"
+          :class="['category-item', { active: selectedCategory === b.category }]"
+          @click="toggleCategory(b.category)"
+        >
+          <span>{{ b.category }}</span>
+          <el-tag size="small" type="info" effect="plain">{{ b.count }}</el-tag>
+        </div>
+      </div>
+
+      <div v-loading="loading" class="product-grid">
+        <el-card
+          v-for="p in list"
+          :key="p.id"
+          class="product-card"
+          shadow="hover"
+          @click="$router.push(`/product/${p.id}`)"
+        >
+          <div class="product-img">
+            <el-image v-if="p.imageUrl" :src="p.imageUrl" fit="cover" style="width:100%;height:100%" />
+            <el-icon v-else size="60" color="#c0c4cc"><Picture /></el-icon>
+          </div>
+          <!-- highlightName contains only <em> tags from ES; safe for v-html -->
+          <div class="product-name" v-html="p.highlightName || p.name"></div>
+          <div class="product-price">¥{{ p.price }}</div>
+          <div class="product-stock">库存：{{ p.stock }}</div>
+        </el-card>
+        <el-empty v-if="!loading && list.length === 0" description="没有找到商品" style="grid-column:1/-1" />
+      </div>
+    </div>
+
     <el-pagination
       v-if="total > pageSize"
       layout="prev, pager, next"
@@ -45,19 +80,44 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(8)
 
+// E3: filter & aggregation state
+const sortOption = ref('')
+const minPriceInput = ref('')
+const maxPriceInput = ref('')
+const selectedCategory = ref('')
+const categoryBuckets = ref([])
+
 async function fetchList() {
   loading.value = true
   try {
-    const data = await getProducts({
+    const params = {
       page: page.value,
       size: pageSize.value,
       keyword: route.query.keyword || ''
-    })
-    list.value = data.list || []
+    }
+    if (sortOption.value) params.sort = sortOption.value
+    if (minPriceInput.value !== '') params.minPrice = minPriceInput.value
+    if (maxPriceInput.value !== '') params.maxPrice = maxPriceInput.value
+    if (selectedCategory.value) params.category = selectedCategory.value
+
+    const data = await getProducts(params)
+    list.value = data.products || []
     total.value = data.total || 0
+    categoryBuckets.value = data.categoryBuckets || []
   } finally {
     loading.value = false
   }
+}
+
+function handleFilterChange() {
+  page.value = 1
+  fetchList()
+}
+
+function toggleCategory(cat) {
+  selectedCategory.value = selectedCategory.value === cat ? '' : cat
+  page.value = 1
+  fetchList()
 }
 
 function handlePageChange(p) {
@@ -66,7 +126,11 @@ function handlePageChange(p) {
 }
 
 onMounted(fetchList)
-watch(() => route.query.keyword, () => { page.value = 1; fetchList() })
+watch(() => route.query.keyword, () => {
+  page.value = 1
+  selectedCategory.value = ''
+  fetchList()
+})
 </script>
 
 <style scoped>
@@ -76,13 +140,61 @@ watch(() => route.query.keyword, () => { page.value = 1; fetchList() })
   padding: 0 16px;
 }
 .filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
   color: #909399;
   font-size: 14px;
 }
+.result-count { flex-shrink: 0; }
+.active-filter { color: #409eff; }
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.range-sep { color: #c0c4cc; }
+
+.main-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.category-sidebar {
+  min-width: 140px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 12px;
+}
+.sidebar-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+.category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #606266;
+  transition: background 0.2s;
+}
+.category-item:hover { background: #f5f7fa; }
+.category-item.active { background: #ecf5ff; color: #409eff; font-weight: 500; }
+
 .product-grid {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   min-height: 200px;
 }

@@ -1,9 +1,9 @@
 package com.shop.service;
 
 import com.shop.entity.Product;
-import com.shop.vo.PageVO;
-import com.shop.vo.ProductVO;
+import com.shop.vo.SearchResultVO;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface ProductSearchService {
@@ -18,8 +18,10 @@ public interface ProductSearchService {
     void syncDelete(Long productId);
 
     /**
-     * Full-text search via ES multi_match on name/description.
-     * Returns highlight-enriched ProductVO list.
+     * Full-text search via ES with optional category/price/sort filters.
+     * Returns highlight-enriched products + category aggregation buckets.
      */
-    PageVO<ProductVO> search(String keyword, int page, int size);
+    SearchResultVO search(String keyword, String category,
+                          BigDecimal minPrice, BigDecimal maxPrice,
+                          String sort, int page, int size);
 }
