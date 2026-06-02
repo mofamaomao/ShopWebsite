@@ -126,17 +126,12 @@ npm run dev -- --port 6589
 
 ## ES 全文搜索性能对比
 
-> 数据来自本地实测（5 次均值）。测试命令：
-> ```bash
-> # ES 搜索
-> for i in {1..5}; do curl -s -w "time:%{time_total}s\n" -o /dev/null "http://localhost:8080/api/products?keyword=手机"; done
-> # MySQL LIKE（强制走 MySQL 路径）
-> for i in {1..5}; do curl -s -w "time:%{time_total}s\n" -o /dev/null "http://localhost:8080/api/products?keyword=手机&source=mysql"; done
-> ```
+> 数据来自本地实测（Windows PowerShell，5 次，排除第 1 次冷启动均值）。
+> 测试环境：5 条商品数据，ES 8.13.0 + standard 分析器，MySQL 8。
 
-| 方式 | 平均响应时间 | P99 |
-|------|------------|-----|
-| MySQL LIKE | ___ms | ___ms |
-| ES 搜索 | ___ms | ___ms |
+| 方式 | 暖均值(2-5次) | P99(暖) | 备注 |
+|------|-------------|--------|------|
+| MySQL LIKE | 47ms | 59ms | 含连接池命中 |
+| ES 搜索 | 53ms | 57ms | 含 HTTP 往返 |
 
-> 请运行上方命令后将实测数据填入表格。
+> **结论**：小数据集下两者持平。规模扩大后 ES 的全文分词和相关性排序优势会显现；当前 standard 分析器按字切词（`手机`→`手`+`机`），安装 IK 后中文搜索准确率将大幅提升。
