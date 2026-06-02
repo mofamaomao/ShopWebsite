@@ -1,4 +1,18 @@
 {
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "ik_max_word": {
+          "type": "custom",
+          "tokenizer": "ik_max_word"
+        },
+        "ik_smart": {
+          "type": "custom",
+          "tokenizer": "ik_smart"
+        }
+      }
+    }
+  },
   "mappings": {
     "properties": {
       "id": {
@@ -6,11 +20,13 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "standard"
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "description": {
         "type": "text",
-        "analyzer": "standard"
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "category": {
         "type": "keyword"
