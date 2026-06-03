@@ -2,12 +2,11 @@
   <div class="success-page">
     <el-result
       icon="success"
-      title="下单成功！"
-      :sub-title="`订单号：${orderId}　合计：¥${total}`"
+      title="支付成功！"
+      :sub-title="`订单号：${orderId}　合计：¥${totalPrice}`"
     >
       <template #extra>
         <el-button type="primary" @click="$router.push('/')">继续购物</el-button>
-        <el-button @click="$router.push('/cart')">查看购物车</el-button>
       </template>
     </el-result>
   </div>
@@ -17,8 +16,8 @@
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const orderId = route.query.orderId
-const total = route.query.total
+const orderId    = route.query.orderId
+const totalPrice = route.query.totalPrice   // Bug1 fix: 对齐参数名
 </script>
 
 <style scoped>

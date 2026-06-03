@@ -8,4 +8,6 @@ public interface CartService {
     CartVO getCart(Long userId);
     void updateItem(Long userId, Long productId, int quantity);
     void removeItem(Long userId, Long productId);
+
+    void clearCart(Long userId);
 }

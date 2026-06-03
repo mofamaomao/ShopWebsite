@@ -6,7 +6,9 @@ const routes = [
   { path: '/register', name: 'Register', component: () => import('@/views/RegisterView.vue') },
   { path: '/product/:id', name: 'Product', component: () => import('@/views/ProductView.vue') },
   { path: '/cart', name: 'Cart', meta: { requiresAuth: true }, component: () => import('@/views/CartView.vue') },
+  { path: '/order-pay', name: 'OrderPay', meta: { requiresAuth: true }, component: () => import('@/views/OrderPayView.vue') },
   { path: '/order-success', name: 'OrderSuccess', meta: { requiresAuth: true }, component: () => import('@/views/OrderSuccessView.vue') },
+  { path: '/order-cancelled', name: 'OrderCancelled', component: () => import('@/views/OrderCancelledView.vue') },
 ]
 
 const router = createRouter({

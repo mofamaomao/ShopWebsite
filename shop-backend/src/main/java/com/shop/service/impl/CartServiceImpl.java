@@ -80,4 +80,9 @@ public class CartServiceImpl implements CartService {
     public void removeItem(Long userId, Long productId) {
         redisTemplate.opsForHash().delete(CART_PREFIX + userId, String.valueOf(productId));
     }
+
+    @Override
+    public void clearCart(Long userId) {
+        redisTemplate.delete(CART_PREFIX + userId);
+    }
 }

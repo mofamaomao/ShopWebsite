@@ -97,7 +97,8 @@ async function handleCheckout() {
   ordering.value = true
   try {
     const order = await createOrder({ items })
-    router.push({ path: '/order-success', query: { orderId: order.orderId, total: order.totalPrice } })
+    cartStore.clearCart()   // Bug2 fix: 清空角标
+    router.push({ path: '/order-pay', query: { orderId: order.orderId, totalPrice: order.totalPrice } })
   } catch (err) {
     ElMessage.error(err.message || '下单失败')
   } finally {

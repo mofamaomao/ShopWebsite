@@ -29,5 +29,9 @@ export const useCartStore = defineStore('cart', () => {
     await fetchCount()
   }
 
-  return { cartCount, fetchCount, addItem, updateItem, removeItem }
+  function clearCart() {
+    cartCount.value = 0
+  }
+
+  return { cartCount, fetchCount, addItem, updateItem, removeItem, clearCart }
 })

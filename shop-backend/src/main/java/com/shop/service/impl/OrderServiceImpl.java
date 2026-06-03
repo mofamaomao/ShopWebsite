@@ -14,8 +14,10 @@ import com.shop.mapper.OrderMapper;
 import com.shop.mapper.ProductMapper;
 import com.shop.mq.OrderMessage;
 import com.shop.mq.OrderProducer;
+import com.shop.service.CartService;
 import com.shop.service.MqMessageService;
 import com.shop.service.OrderService;
+import com.shop.vo.OrderStatusVO;
 import com.shop.vo.OrderVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +27,9 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,6 +46,7 @@ public class OrderServiceImpl implements OrderService {
     private final StringRedisTemplate stringRedisTemplate;
     private final OrderProducer       orderProducer;
     private final MqMessageService    mqMessageService;
+    private final CartService         cartService;
     private final ObjectMapper        objectMapper;
 
     @Autowired
@@ -54,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
                             StringRedisTemplate stringRedisTemplate,
                             OrderProducer orderProducer,
                             MqMessageService mqMessageService,
+                            CartService cartService,
                             ObjectMapper objectMapper) {
         this.productMapper       = productMapper;
         this.orderMapper         = orderMapper;
@@ -61,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
         this.stringRedisTemplate = stringRedisTemplate;
         this.orderProducer       = orderProducer;
         this.mqMessageService    = mqMessageService;
+        this.cartService         = cartService;
         this.objectMapper        = objectMapper;
     }
 
@@ -81,6 +88,10 @@ public class OrderServiceImpl implements OrderService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
             items.add(new OrderMessage.Item(product.getId(), itemReq.getQuantity(), product.getPrice()));
         }
+        // Bug1 fix: 在 Producer 端预计算 totalPrice，不依赖 Consumer 写库
+        BigDecimal totalPrice = items.stream()
+                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Step 2: Redis 预扣库存，失败立即回滚已扣数量
         List<OrderMessage.Item> deducted = new ArrayList<>();
@@ -108,11 +119,15 @@ public class OrderServiceImpl implements OrderService {
         // Step 4: 异步发送 MQ（confirm 回调更新 mq_message status）
         orderProducer.send(message);
 
+        // Bug2 fix: MQ 消息发出后清空购物车（Redis Hash + 前端 Pinia 各自负责）
+        cartService.clearCart(userId);
+
         // Step 5: 立即返回（DB 写入由 Consumer 异步完成）
         OrderVO vo = new OrderVO();
         vo.setOrderId(orderId);
-        vo.setStatus("PROCESSING");
-        log.info("[Order] created orderId={} userId={}", orderId, userId);
+        vo.setTotalPrice(totalPrice);      // Bug1 fix: 返回预计算的金额
+        vo.setStatus("PENDING_PAYMENT");
+        log.info("[Order] created orderId={} userId={} total={}", orderId, userId, totalPrice);
         return vo;
     }
 
@@ -170,5 +185,39 @@ public class OrderServiceImpl implements OrderService {
             stringRedisTemplate.opsForValue().increment(key, item.getQuantity());
         }
         log.info("[Cancel] order cancelled orderNo={} items={}", orderNo, items.size());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void payOrder(String orderNo, Long userId) {
+        Order order = orderMapper.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(404, "订单不存在"));
+        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+            throw new BusinessException(400, "订单状态不合法，无法支付");
+        }
+        Order update = new Order();
+        update.setId(order.getId());
+        update.setStatus("PAID");
+        orderMapper.update(update);
+        log.info("[Pay] orderId={} userId={} → PAID", orderNo, userId);
+    }
+
+    @Override
+    public OrderStatusVO getOrderStatus(String orderNo) {
+        Order order = orderMapper.findByOrderNo(orderNo).orElse(null);
+        OrderStatusVO vo = new OrderStatusVO();
+        vo.setOrderId(orderNo);
+        if (order == null) {
+            // Consumer 尚未落库，返回处理中状态
+            vo.setStatus("PROCESSING");
+            vo.setRemainSeconds(1800);
+            return vo;
+        }
+        vo.setStatus(order.getStatus());
+        vo.setTotalPrice(order.getTotalPrice());
+        long elapsed = order.getCreatedAt() != null
+                ? ChronoUnit.SECONDS.between(order.getCreatedAt(), LocalDateTime.now()) : 0;
+        vo.setRemainSeconds(Math.max(0, 1800 - elapsed));
+        return vo;
     }
 }
