@@ -1,5 +1,7 @@
 package com.shop.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shop.common.BusinessException;
 import com.shop.common.ErrorCode;
 import com.shop.common.RedisKeyConstants;
@@ -8,6 +10,7 @@ import com.shop.entity.Product;
 import com.shop.mapper.ProductMapper;
 import com.shop.mq.OrderMessage;
 import com.shop.mq.OrderProducer;
+import com.shop.service.MqMessageService;
 import com.shop.service.OrderService;
 import com.shop.vo.OrderVO;
 import lombok.extern.slf4j.Slf4j;
@@ -28,30 +31,35 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class OrderServiceImpl implements OrderService {
 
-    private final ProductMapper productMapper;
+    private final ProductMapper       productMapper;
     private final StringRedisTemplate stringRedisTemplate;
-    private final OrderProducer orderProducer;
+    private final OrderProducer       orderProducer;
+    private final MqMessageService    mqMessageService;
+    private final ObjectMapper        objectMapper;
 
     @Autowired
     @Qualifier("orderDeductScript")
     private DefaultRedisScript<Long> orderDeductScript;
 
     public OrderServiceImpl(ProductMapper productMapper,
-                             StringRedisTemplate stringRedisTemplate,
-                             OrderProducer orderProducer) {
-        this.productMapper = productMapper;
+                            StringRedisTemplate stringRedisTemplate,
+                            OrderProducer orderProducer,
+                            MqMessageService mqMessageService,
+                            ObjectMapper objectMapper) {
+        this.productMapper       = productMapper;
         this.stringRedisTemplate = stringRedisTemplate;
-        this.orderProducer = orderProducer;
+        this.orderProducer       = orderProducer;
+        this.mqMessageService    = mqMessageService;
+        this.objectMapper        = objectMapper;
     }
 
     /**
-     * 异步下单流程：
-     *   1. 参数校验（商品存在 + 价格快照）
+     * 异步下单：
+     *   1. 参数校验 + 价格快照
      *   2. Redis Lua 原子预扣库存
-     *   3. 发送 OrderMessage，等待 Broker confirm（≤3s）
-     *   4. confirm ack → 立即返回 orderId；nack → 回滚 Redis + 500
-     *
-     * Consumer 异步写 DB（order + order_item + 扣 MySQL 库存）。
+     *   3. 写 mq_message 表（status=0），失败回滚 Redis
+     *   4. 发送 MQ，confirm 回调异步更新 status=1/2
+     *   5. 立即返回 PROCESSING
      */
     @Override
     public OrderVO createOrder(Long userId, OrderCreateRequest req) {
@@ -75,17 +83,21 @@ public class OrderServiceImpl implements OrderService {
             throw e;
         }
 
-        // Step 3: 发送 MQ，等待 confirm
+        // Step 3: 写 mq_message 表（status=0），失败回滚 Redis
         String orderId = UUID.randomUUID().toString();
         OrderMessage message = new OrderMessage(orderId, userId, items, LocalDateTime.now());
-
-        boolean ack = orderProducer.send(message);
-        if (!ack) {
-            items.forEach(item -> rollbackRedisStock(item.getProductId(), item.getQuantity()));
+        try {
+            String content = objectMapper.writeValueAsString(message);
+            mqMessageService.save(orderId, content);
+        } catch (JsonProcessingException | RuntimeException e) {
+            deducted.forEach(d -> rollbackRedisStock(d.getProductId(), d.getQuantity()));
             throw new BusinessException(500, "下单失败，请重试");
         }
 
-        // Step 4: 立即返回（DB 写入由 Consumer 异步完成）
+        // Step 4: 异步发送 MQ（confirm 回调更新 mq_message status）
+        orderProducer.send(message);
+
+        // Step 5: 立即返回（DB 写入由 Consumer 异步完成）
         OrderVO vo = new OrderVO();
         vo.setOrderId(orderId);
         vo.setStatus("PROCESSING");
@@ -93,29 +105,21 @@ public class OrderServiceImpl implements OrderService {
         return vo;
     }
 
-    /** 懒加载：Redis key 不存在时从 DB 初始化，再执行 Lua 原子扣减 */
     private void preDeductRedisStock(Long productId, int quantity) {
         String key = RedisKeyConstants.orderStockKey(productId);
-
         if (!Boolean.TRUE.equals(stringRedisTemplate.hasKey(key))) {
             Product product = productMapper.findById(productId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-            // setIfAbsent 保证多线程只初始化一次
             stringRedisTemplate.opsForValue()
                     .setIfAbsent(key, String.valueOf(product.getStock()), 2, TimeUnit.HOURS);
         }
-
         Long result = stringRedisTemplate.execute(
-                orderDeductScript,
-                Collections.singletonList(key),
-                String.valueOf(quantity));
-
+                orderDeductScript, Collections.singletonList(key), String.valueOf(quantity));
         if (Long.valueOf(0L).equals(result)) {
             throw new BusinessException(ErrorCode.STOCK_INSUFFICIENT);
         }
         if (!Long.valueOf(1L).equals(result)) {
-            // -1: key 在 hasKey 和 execute 之间过期，降级报错
-            log.warn("[Order] Redis stock key missing productId={}, retry next request", productId);
+            log.warn("[Order] Redis stock key missing productId={}", productId);
             throw new BusinessException(ErrorCode.STOCK_INSUFFICIENT);
         }
     }

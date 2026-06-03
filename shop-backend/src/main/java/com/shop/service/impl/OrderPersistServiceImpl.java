@@ -76,4 +76,9 @@ public class OrderPersistServiceImpl implements OrderPersistService {
 
         log.info("[OrderPersist] order saved orderId={} total={}", message.getOrderId(), total);
     }
+
+    @Override
+    public boolean isProcessed(String orderId) {
+        return orderMapper.existsByOrderNo(orderId);
+    }
 }

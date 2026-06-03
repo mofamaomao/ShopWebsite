@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.MqMessageMapper">
+
+    <insert id="insert" parameterType="MqMessage">
+        INSERT INTO mq_message (id, content, status, retry_count, created_at, updated_at)
+        VALUES (#{id}, #{content}, #{status}, #{retryCount}, NOW(), NOW())
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE mq_message SET status = #{status}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE mq_message
+        SET status = 2, retry_count = retry_count + 1, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markDead">
+        UPDATE mq_message SET status = 3, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <select id="findForRetry" resultType="MqMessage">
+        SELECT * FROM mq_message WHERE status = 2 AND retry_count &lt; 3
+    </select>
+
+</mapper>
