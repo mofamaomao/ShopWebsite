@@ -46,6 +46,7 @@ public class UserServiceImpl implements UserService {
         userVO.setId(user.getId());
         userVO.setPhone(user.getPhone());
         userVO.setNickname(user.getNickname());
-        return new LoginVO(jwtUtils.generateToken(user.getId()), userVO);
+        userVO.setRole(user.getRole() != null ? user.getRole() : "USER");
+        return new LoginVO(jwtUtils.generateToken(user.getId(), user.getRole()), userVO);
     }
 }

@@ -8,6 +8,7 @@
         <result property="phone" column="phone"/>
         <result property="password" column="password"/>
         <result property="nickname" column="nickname"/>
+        <result property="role" column="role"/>
         <result property="createdAt" column="created_at"/>
     </resultMap>
 

@@ -23,22 +23,30 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(Long userId) {
+    public String generateToken(Long userId, String role) {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim("role", role != null ? role : "USER")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(signingKey())
                 .compact();
     }
 
-    public Long getUserId(String token) {
-        Claims claims = Jwts.parser()
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(signingKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return Long.parseLong(claims.getSubject());
+    }
+
+    public Long getUserId(String token) {
+        return Long.parseLong(parseClaims(token).getSubject());
+    }
+
+    public String getRole(String token) {
+        return parseClaims(token).get("role", String.class);
     }
 
     public boolean validate(String token) {

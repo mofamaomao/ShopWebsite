@@ -1,5 +1,6 @@
 package com.shop.service.impl;
 
+import com.shop.common.BusinessException;
 import com.shop.dto.CartAddRequest;
 import com.shop.entity.Product;
 import com.shop.mapper.ProductMapper;
@@ -26,6 +27,11 @@ public class CartServiceImpl implements CartService {
 
     @Override
     public void addToCart(Long userId, CartAddRequest req) {
+        Product product = productMapper.findById(req.getProductId())
+                .orElseThrow(() -> new BusinessException(404, "商品不存在"));
+        if (product.getStatus() != null && product.getStatus() != 1) {
+            throw new BusinessException(400, "商品已下架，无法加入购物车");
+        }
         // HINCRBY 幂等叠加数量
         redisTemplate.opsForHash().increment(
                 CART_PREFIX + userId,

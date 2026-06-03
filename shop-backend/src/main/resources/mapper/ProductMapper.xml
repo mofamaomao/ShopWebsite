@@ -11,6 +11,13 @@
         <result property="category" column="category"/>
         <result property="imageUrl" column="image_url"/>
         <result property="description" column="description"/>
+        <result property="isSeckill" column="is_seckill"/>
+        <result property="seckillStock" column="seckill_stock"/>
+        <result property="seckillPrice" column="seckill_price"/>
+        <result property="brandId" column="brand_id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="status" column="status"/>
+        <result property="isDeleted" column="is_deleted"/>
     </resultMap>
 
     <select id="findById" resultMap="ProductResultMap">
@@ -74,5 +81,53 @@
     <select id="findSeckillStockById" resultType="java.lang.Integer">
         SELECT seckill_stock FROM product WHERE id = #{id} AND is_seckill = 1
     </select>
+
+    <select id="findAdminProducts" resultMap="ProductResultMap">
+        SELECT * FROM product
+        <where>
+            is_deleted = 0
+            <if test="categoryId != null">AND category_id = #{categoryId}</if>
+            <if test="brandId != null">AND brand_id = #{brandId}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE product SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="softDelete">
+        UPDATE product SET is_deleted = 1 WHERE id = #{id}
+    </update>
+
+    <insert id="insertAdmin" parameterType="Product" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (name, price, stock, category, image_url, description,
+                             brand_id, category_id, status, is_deleted)
+        VALUES (#{name}, #{price}, #{stock},
+                COALESCE(#{category}, ''),
+                #{imageUrl}, #{description},
+                #{brandId}, #{categoryId},
+                COALESCE(#{status}, 1), 0)
+    </insert>
+
+    <update id="updateAdmin" parameterType="Product">
+        UPDATE product
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="brandId != null">brand_id = #{brandId},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id} AND is_deleted = 0
+    </update>
 
 </mapper>

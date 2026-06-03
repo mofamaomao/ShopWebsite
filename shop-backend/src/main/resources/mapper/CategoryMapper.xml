@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.CategoryMapper">
+
+    <resultMap id="CategoryResultMap" type="com.shop.entity.Category">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="sort" column="sort"/>
+        <result property="iconUrl" column="icon_url"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="CategoryResultMap">
+        SELECT * FROM category ORDER BY parent_id ASC, sort ASC, id ASC
+    </select>
+
+    <select id="findById" resultMap="CategoryResultMap">
+        SELECT * FROM category WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.shop.entity.Category" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO category (name, parent_id, sort, icon_url, created_at)
+        VALUES (#{name}, #{parentId}, COALESCE(#{sort}, 0), #{iconUrl}, NOW())
+    </insert>
+
+    <update id="update" parameterType="com.shop.entity.Category">
+        UPDATE category
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="iconUrl != null">icon_url = #{iconUrl},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM category WHERE id = #{id}
+    </delete>
+
+</mapper>
