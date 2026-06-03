@@ -98,10 +98,46 @@ POST /api/orders
 }
 ```
 
-## 测试要点
+## 测试结果
 
-1. 正常下单：Redis 有库存 → ack → 返回 orderId
-2. 库存不足：Lua 返回 0 → 400 STOCK_INSUFFICIENT
-3. MQ nack（Broker 重启）：回滚 Redis 库存 → 500
-4. 重复消费：`existsByOrderNo` 命中 → 直接 ack，DB 不重复写
-5. Consumer 异常：basicNack requeue=false → 消息进 DLQ
+### Lua 脚本单元测试（redis-cli --eval，Docker shop-redis）
+
+| 用例 | 命令 | 预期 | 实际 |
+|---|---|---|---|
+| 正常扣减 | stock=5，deduct=2 | 1 | ✅ 1 |
+| 连续扣减 | stock=3，deduct=2 | 1 | ✅ 1 |
+| 库存不足 | stock=1，deduct=5 | 0 | ✅ 0 |
+| key 不存在 | stock:999，deduct=1 | -1 | ✅ -1 |
+
+> **Windows PowerShell 注意**：`redis-cli --eval script.lua key , arg` 中的逗号需加引号 `","` 否则 PowerShell 将其解析为数组运算符，导致 ARGV 为空。
+
+### API 集成测试
+
+| 用例 | 请求 | 预期响应 | 实际 |
+|---|---|---|---|
+| 正常下单 | POST /api/orders qty=1 | 200 订单处理中 + UUID orderId | ✅ orderId=afd1d8ac-f7fc-4af2-9af4-cc5024e345d8 |
+| Consumer 写 DB | 查 order 表 order_no | status=PAID，total_price=9999.00 | ✅ id=47 |
+| 库存不足拦截 | order:stock:1=0，qty=1 | 1003 库存不足 | ✅ code=1003 |
+
+### 实际接口响应
+
+```json
+{
+  "code": 200,
+  "msg": "订单处理中",
+  "data": {
+    "orderId": "afd1d8ac-f7fc-4af2-9af4-cc5024e345d8",
+    "status": "PROCESSING"
+  }
+}
+```
+
+### 调试过程记录
+
+| 问题 | 原因 | 解决 |
+|---|---|---|
+| `migration_mq.sql` 导入报错 1064 | `ADD COLUMN IF NOT EXISTS` 是 MySQL 8.0.3+ 语法 | 去掉 `IF NOT EXISTS`，改 `NOT NULL DEFAULT ''` 为 `NULL` |
+| Lua EVAL 返回 nil 错误 | PowerShell `,` 是数组运算符，逗号未传给 redis-cli | 改为 `"," ` 加引号 |
+| Lua 始终返回 0 | 应用运行时 `DECRBY` 已把 Redis stock 扣至 0 | 停应用后单独测 Lua 脚本 |
+| 登录 400 | 接口字段是 `phone` 非 `username` | 改用 `{"phone":"...","password":"..."}` |
+| MySQL 查询 `\o` 错误 | PowerShell 反引号是转义符，`` \`o `` 变成 `\o` | 用双反引号 ` `` ` 表示字面反引号 |
