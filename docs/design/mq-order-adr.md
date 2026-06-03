@@ -90,3 +90,68 @@ CANCELLED（库存同步恢复）
 ```
 
 取消逻辑在 `OrderServiceImpl.cancelOrder()` 中以 `@Transactional` 保证原子性：更新订单状态 → `productMapper.increaseStock()` 恢复 MySQL 库存 → `stringRedisTemplate.increment()` 恢复 Redis 计数，两者在同一事务 + 同一方法调用中执行，保证一致性。
+
+---
+
+## 核心实现要点
+
+### 延迟队列配置
+
+```java
+// RabbitMQConfig.java
+@Value("${order.timeout-ms:1800000}")
+private long orderTimeoutMs;
+
+@Bean
+public Queue orderDelayQueue() {
+    return QueueBuilder.durable(ORDER_DELAY_QUEUE)
+            .withArgument("x-message-ttl", orderTimeoutMs)
+            .withArgument("x-dead-letter-exchange", ORDER_CANCEL_EXCHANGE)
+            .withArgument("x-dead-letter-routing-key", ORDER_CANCEL_KEY)
+            .build();
+}
+```
+
+TTL 值通过 `@Value("${order.timeout-ms:1800000}")` 注入，默认 30 分钟（1 800 000 ms），测试环境配置为 60 000 ms（60 秒），**不允许硬编码**。
+
+### 取消消费者幂等处理
+
+```java
+// OrderCancelConsumer.java
+@RabbitListener(queues = RabbitMQConfig.ORDER_CANCEL_QUEUE)
+public void consumeCancel(OrderCancelMessage message, Channel channel,
+                          @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+    orderService.cancelOrder(message.getOrderId());  // 幂等：非 PENDING_PAYMENT 直接跳过
+    channel.basicAck(deliveryTag, false);
+    // 失败时：basicNack(tag, false, false) — requeue=false，不重试
+}
+```
+
+`basicNack(requeue=false)` 是关键：若取消逻辑抛异常，消息不重回 `order.cancel.queue`，避免死循环。该队列没有配置 DLX，失败消息直接丢弃并记录 ERROR 日志，依赖人工或告警系统介入。
+
+---
+
+## 库存恢复一致性分析
+
+超时取消需同时恢复两个位置的库存，存在潜在不一致风险：
+
+| 场景 | MySQL 库存 | Redis 库存 | 处理方式 |
+|---|---|---|---|
+| 正常取消 | +qty（事务内）| +qty（事务内）| `@Transactional` 保证两者同时成功或回滚 |
+| Redis 恢复失败 | 已 +qty | 未变更 | 事务回滚，MySQL 还原；下次重试时 Redis 仍偏低，会导致少卖 |
+| MySQL 恢复失败 | 未变更 | Redis 未执行 | 事务回滚，两者均未变更，幂等安全 |
+| 重复取消（幂等触发）| 不执行 | 不执行 | `cancelOrder()` 检查 status != PENDING_PAYMENT 直接返回 |
+
+Redis 库存恢复失败时会造成**少卖**而非超卖，这是可接受的保守策略。生产环境建议添加后台对账任务，定期比对 Redis 计数与 MySQL 实际库存，发现偏差时触发修正。
+
+---
+
+## 单实例局限与生产改造建议
+
+本 Demo 有以下单实例局限，上线前需改造：
+
+1. **消费端重试计数**：`OrderConsumer` 使用 `ConcurrentHashMap<String, AtomicInteger>` 记录重试次数。多实例部署时，同一消息可能被不同实例消费，计数器各自独立，无法准确达到 3 次后路由 DLQ。**改造方案**：改用 Redis `INCR order:retry:{orderId}` 原子自增，设置 TTL 自动清理。
+
+2. **延迟精度**：TTL 是队列级别，消息精确到期时间受 RabbitMQ 定时检查周期影响（默认 ~100ms 精度），高并发下可能有数秒偏差。**改造方案**：若需精确延迟，改用方案 B（delayed-message-exchange 插件）或 Redis `ZSET` + 定时扫描。
+
+3. **事务消息**：当前 `OrderPersistServiceImpl.persist()` 在数据库事务内调用 `rabbitTemplate.convertAndSend()`，若 MQ 发送成功但数据库提交失败，会产生孤立的取消消息。**改造方案**：使用 RocketMQ 事务消息，或改为事务提交后通过 `ApplicationEvent` 异步发送。
