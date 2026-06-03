@@ -79,8 +79,13 @@ public class OrderPersistServiceImpl implements OrderPersistService {
         log.info("[OrderPersist] order saved orderId={} total={}", message.getOrderId(), total);
 
         // 发送延迟取消消息（TTL 到期后路由到 order.cancel.queue）
-        rabbitTemplate.convertAndSend("", RabbitMQConfig.ORDER_DELAY_QUEUE,
-                new OrderCancelMessage(message.getOrderId()));
+        OrderCancelMessage cancelMsg = OrderCancelMessage.builder()
+                .orderId(message.getOrderId())
+                .userId(message.getUserId())
+                .orderCreateTime(message.getCreateTime())
+                .build();
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_DELAY_EXCHANGE,
+                RabbitMQConfig.ORDER_DELAY_KEY, cancelMsg);
         log.info("[OrderPersist] delay cancel message sent orderId={}", message.getOrderId());
     }
 

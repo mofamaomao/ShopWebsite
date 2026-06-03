@@ -26,9 +26,10 @@ public class RabbitMQConfig {
     public static final String ORDER_DLX            = "order.dlx";
 
     public static final String ORDER_DELAY_QUEUE    = "order.delay.queue";
+    public static final String ORDER_DELAY_EXCHANGE = "order.delay.exchange";
+    public static final String ORDER_DELAY_KEY      = "order.delay.key";
     public static final String ORDER_CANCEL_EXCHANGE = "order.cancel.exchange";
     public static final String ORDER_CANCEL_QUEUE   = "order.cancel.queue";
-    public static final String ORDER_CANCEL_KEY     = "order.cancel.key";
 
     @Value("${order.timeout-ms:1800000}")
     private long orderTimeoutMs;
@@ -74,8 +75,18 @@ public class RabbitMQConfig {
         return QueueBuilder.durable(ORDER_DELAY_QUEUE)
                 .withArgument("x-message-ttl", orderTimeoutMs)
                 .withArgument("x-dead-letter-exchange", ORDER_CANCEL_EXCHANGE)
-                .withArgument("x-dead-letter-routing-key", ORDER_CANCEL_KEY)
+                .withArgument("x-dead-letter-routing-key", ORDER_CANCEL_QUEUE)
                 .build();
+    }
+
+    @Bean
+    public DirectExchange orderDelayExchange() {
+        return new DirectExchange(ORDER_DELAY_EXCHANGE);
+    }
+
+    @Bean
+    public Binding orderDelayBinding() {
+        return BindingBuilder.bind(orderDelayQueue()).to(orderDelayExchange()).with(ORDER_DELAY_KEY);
     }
 
     @Bean
@@ -90,7 +101,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Binding orderCancelBinding() {
-        return BindingBuilder.bind(orderCancelQueue()).to(orderCancelExchange()).with(ORDER_CANCEL_KEY);
+        return BindingBuilder.bind(orderCancelQueue()).to(orderCancelExchange()).with(ORDER_CANCEL_QUEUE);
     }
 
     // ── JSON 消息序列化 ───────────────────────────────────────────────────
