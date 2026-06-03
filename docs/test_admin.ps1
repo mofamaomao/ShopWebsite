@@ -187,8 +187,10 @@ if ($names -contains "iPhone 15 Pro") {
     Write-Host "[WARN] T4-3 iPhone not found (seed data may differ)" -ForegroundColor DarkYellow
 }
 
-# T4-4  create draft (status=2, not in ES)
-$r = uPost "/admin/products" $AT '{"name":"PSTestProduct","price":99.99,"stock":10,"categoryId":2,"brandId":2,"status":2}'
+# T4-4  create draft (status=2, not in ES)  -- use timestamp name to avoid cross-run pollution
+$PROD_NAME = "PSTest_$(Get-Date -Format 'yyyyMMddHHmmss')"
+$prodJson  = "{`"name`":`"$PROD_NAME`",`"price`":99.99,`"stock`":10,`"categoryId`":2,`"brandId`":2,`"status`":2}"
+$r = uPost "/admin/products" $AT $prodJson
 ok "T4-4 create product" $r
 $PROD_ID = $r.data.id     # NOTE: use $PROD_ID, not $PID ($PID = PS process id, read-only)
 if ($r.data.status -eq 2) {
@@ -196,7 +198,7 @@ if ($r.data.status -eq 2) {
 } else {
     Write-Host "[FAIL] T4-5 status=$($r.data.status)" -ForegroundColor Red
 }
-Write-Host "       new product id=$PROD_ID"
+Write-Host "       new product id=$PROD_ID  name=$PROD_NAME"
 
 # T4-6  publish -> status=1, sync ES
 $r = uPut "/admin/products/$PROD_ID/status?status=1" $AT
@@ -208,7 +210,7 @@ if ($r.data.status -eq 1) {
 }
 
 Start-Sleep -Seconds 1
-$esR = uGet "/products" $null @{ keyword="PSTestProduct" }
+$esR = uGet "/products" $null @{ keyword=$PROD_NAME }
 if ($esR.data.total -gt 0) {
     Write-Host "[PASS] T4-8 found in ES after publish" -ForegroundColor Green
 } else {
@@ -223,7 +225,7 @@ if ($r.data.status -eq 0) {
 }
 
 Start-Sleep -Seconds 1
-$esR = uGet "/products" $null @{ keyword="PSTestProduct" }
+$esR = uGet "/products" $null @{ keyword=$PROD_NAME }
 if ($esR.data.total -eq 0) {
     Write-Host "[PASS] T4-11 not in ES after offline" -ForegroundColor Green
 } else {
@@ -234,7 +236,7 @@ if ($esR.data.total -eq 0) {
 $r = uDelete "/admin/products/$PROD_ID" $AT
 ok "T4-12 soft delete" $r
 
-$r = uGet "/admin/products" $AT @{ keyword="PSTestProduct" }
+$r = uGet "/admin/products" $AT @{ keyword=$PROD_NAME }
 if ($r.data.total -eq 0) {
     Write-Host "[PASS] T4-13 not in list after delete" -ForegroundColor Green
 } else {
