@@ -58,6 +58,9 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+order:
+  timeout-ms: 60000
+
 logging:
   level:
     com.shop: DEBUG

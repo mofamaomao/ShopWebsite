@@ -6,7 +6,11 @@ import com.shop.common.BusinessException;
 import com.shop.common.ErrorCode;
 import com.shop.common.RedisKeyConstants;
 import com.shop.dto.OrderCreateRequest;
+import com.shop.entity.Order;
+import com.shop.entity.OrderItem;
 import com.shop.entity.Product;
+import com.shop.mapper.OrderItemMapper;
+import com.shop.mapper.OrderMapper;
 import com.shop.mapper.ProductMapper;
 import com.shop.mq.OrderMessage;
 import com.shop.mq.OrderProducer;
@@ -19,6 +23,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -32,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 public class OrderServiceImpl implements OrderService {
 
     private final ProductMapper       productMapper;
+    private final OrderMapper         orderMapper;
+    private final OrderItemMapper     orderItemMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final OrderProducer       orderProducer;
     private final MqMessageService    mqMessageService;
@@ -42,11 +49,15 @@ public class OrderServiceImpl implements OrderService {
     private DefaultRedisScript<Long> orderDeductScript;
 
     public OrderServiceImpl(ProductMapper productMapper,
+                            OrderMapper orderMapper,
+                            OrderItemMapper orderItemMapper,
                             StringRedisTemplate stringRedisTemplate,
                             OrderProducer orderProducer,
                             MqMessageService mqMessageService,
                             ObjectMapper objectMapper) {
         this.productMapper       = productMapper;
+        this.orderMapper         = orderMapper;
+        this.orderItemMapper     = orderItemMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.orderProducer       = orderProducer;
         this.mqMessageService    = mqMessageService;
@@ -132,5 +143,32 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("[Order] rollback Redis stock failed productId={}", productId, e);
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelOrder(String orderNo) {
+        Order order = orderMapper.findByOrderNo(orderNo).orElse(null);
+        if (order == null) {
+            log.warn("[Cancel] order not found orderNo={}", orderNo);
+            return;
+        }
+        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+            log.info("[Cancel] skip, status={} orderNo={}", order.getStatus(), orderNo);
+            return;
+        }
+
+        Order update = new Order();
+        update.setId(order.getId());
+        update.setStatus("CANCELLED");
+        orderMapper.update(update);
+
+        List<OrderItem> items = orderItemMapper.findByOrderId(order.getId());
+        for (OrderItem item : items) {
+            productMapper.increaseStock(item.getProductId(), item.getQuantity());
+            String key = RedisKeyConstants.orderStockKey(item.getProductId());
+            stringRedisTemplate.opsForValue().increment(key, item.getQuantity());
+        }
+        log.info("[Cancel] order cancelled orderNo={} items={}", orderNo, items.size());
     }
 }

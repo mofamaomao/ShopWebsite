@@ -1,16 +1,17 @@
 package com.shop.service.impl;
 
-import com.shop.common.ErrorCode;
+import com.shop.config.RabbitMQConfig;
 import com.shop.entity.Order;
 import com.shop.entity.OrderItem;
-import com.shop.entity.Product;
 import com.shop.mapper.OrderItemMapper;
 import com.shop.mapper.OrderMapper;
 import com.shop.mapper.ProductMapper;
+import com.shop.mq.OrderCancelMessage;
 import com.shop.mq.OrderMessage;
 import com.shop.service.OrderPersistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ public class OrderPersistServiceImpl implements OrderPersistService {
     private final ProductMapper productMapper;
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -60,7 +62,7 @@ public class OrderPersistServiceImpl implements OrderPersistService {
         order.setOrderNo(message.getOrderId());
         order.setUserId(message.getUserId());
         order.setTotalPrice(total);
-        order.setStatus("PAID");
+        order.setStatus("PENDING_PAYMENT");
         try {
             orderMapper.insert(order);
         } catch (DuplicateKeyException e) {
@@ -75,6 +77,11 @@ public class OrderPersistServiceImpl implements OrderPersistService {
         }
 
         log.info("[OrderPersist] order saved orderId={} total={}", message.getOrderId(), total);
+
+        // 发送延迟取消消息（TTL 到期后路由到 order.cancel.queue）
+        rabbitTemplate.convertAndSend("", RabbitMQConfig.ORDER_DELAY_QUEUE,
+                new OrderCancelMessage(message.getOrderId()));
+        log.info("[OrderPersist] delay cancel message sent orderId={}", message.getOrderId());
     }
 
     @Override

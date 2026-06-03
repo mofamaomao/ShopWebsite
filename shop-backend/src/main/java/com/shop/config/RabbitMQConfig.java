@@ -8,6 +8,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,11 +19,19 @@ import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 @EnableRabbit
 public class RabbitMQConfig {
 
-    public static final String ORDER_QUEUE    = "order.queue";
-    public static final String ORDER_EXCHANGE = "order.exchange";
-    public static final String ORDER_KEY      = "order.routing.key";
-    public static final String ORDER_DLQ      = "order.dlq";
-    public static final String ORDER_DLX      = "order.dlx";
+    public static final String ORDER_QUEUE          = "order.queue";
+    public static final String ORDER_EXCHANGE       = "order.exchange";
+    public static final String ORDER_KEY            = "order.routing.key";
+    public static final String ORDER_DLQ            = "order.dlq";
+    public static final String ORDER_DLX            = "order.dlx";
+
+    public static final String ORDER_DELAY_QUEUE    = "order.delay.queue";
+    public static final String ORDER_CANCEL_EXCHANGE = "order.cancel.exchange";
+    public static final String ORDER_CANCEL_QUEUE   = "order.cancel.queue";
+    public static final String ORDER_CANCEL_KEY     = "order.cancel.key";
+
+    @Value("${order.timeout-ms:1800000}")
+    private long orderTimeoutMs;
 
     // ── 正常队列（绑定 DLX）────────────────────────────────────────────────
     @Bean
@@ -57,6 +66,31 @@ public class RabbitMQConfig {
     @Bean
     public Binding dlqBinding() {
         return BindingBuilder.bind(orderDlq()).to(dlxExchange()).with(ORDER_DLQ);
+    }
+
+    // ── 延迟队列（TTL → DLX → 取消队列）──────────────────────────────────
+    @Bean
+    public Queue orderDelayQueue() {
+        return QueueBuilder.durable(ORDER_DELAY_QUEUE)
+                .withArgument("x-message-ttl", orderTimeoutMs)
+                .withArgument("x-dead-letter-exchange", ORDER_CANCEL_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", ORDER_CANCEL_KEY)
+                .build();
+    }
+
+    @Bean
+    public DirectExchange orderCancelExchange() {
+        return new DirectExchange(ORDER_CANCEL_EXCHANGE);
+    }
+
+    @Bean
+    public Queue orderCancelQueue() {
+        return QueueBuilder.durable(ORDER_CANCEL_QUEUE).build();
+    }
+
+    @Bean
+    public Binding orderCancelBinding() {
+        return BindingBuilder.bind(orderCancelQueue()).to(orderCancelExchange()).with(ORDER_CANCEL_KEY);
     }
 
     // ── JSON 消息序列化 ───────────────────────────────────────────────────

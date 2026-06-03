@@ -5,4 +5,6 @@ import com.shop.vo.OrderVO;
 
 public interface OrderService {
     OrderVO createOrder(Long userId, OrderCreateRequest request);
+
+    void cancelOrder(String orderNo);
 }

@@ -63,6 +63,10 @@
         WHERE id = #{id} AND stock >= #{quantity}
     </update>
 
+    <update id="increaseStock">
+        UPDATE product SET stock = stock + #{quantity} WHERE id = #{id}
+    </update>
+
     <delete id="deleteById">
         DELETE FROM product WHERE id = #{id}
     </delete>
