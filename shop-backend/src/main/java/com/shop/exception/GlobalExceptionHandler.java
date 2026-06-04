@@ -1,6 +1,7 @@
 package com.shop.exception;
 
 import com.shop.common.BusinessException;
+import com.shop.common.PayException;
 import com.shop.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -17,6 +18,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public Result<?> handleBusiness(BusinessException e) {
+        return Result.fail(e.getCode(), e.getMessage());
+    }
+
+    @ExceptionHandler(PayException.class)
+    public Result<?> handlePay(PayException e) {
         return Result.fail(e.getCode(), e.getMessage());
     }
 

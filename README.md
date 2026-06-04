@@ -124,6 +124,51 @@ npm run dev -- --port 6589
 
 ---
 
+## 支付宝沙箱配置（面试官复现指引）
+
+### 前置：获取沙箱密钥
+
+1. 登录 [支付宝开放平台](https://open.alipay.com) → **沙箱环境**
+2. 记录 **沙箱 AppID**（形如 `2021000122XXXXXX`）
+3. 在"沙箱应用 → 开发设置 → 接口加签方式"生成应用私钥（RSA2）并获取支付宝公钥
+
+### 填写环境变量
+
+编辑 `shop-backend/.env`（已加入 `.gitignore`，不会入库）：
+
+```dotenv
+ALIPAY_APP_ID=你的沙箱AppID
+ALIPAY_PRIVATE_KEY=应用私钥(PKCS8格式，去掉-----BEGIN/END-----行及换行符)
+ALIPAY_PUBLIC_KEY=支付宝公钥(去掉-----BEGIN/END-----行及换行符)
+ALIPAY_NOTIFY_URL=https://xxxx.ngrok.io/api/pay/notify
+ALIPAY_RETURN_URL=http://localhost:5173/order-success
+```
+
+### 内网穿透（异步通知必须）
+
+```bash
+ngrok http 8080
+# 将输出的 https://xxxx.ngrok.io 填入 ALIPAY_NOTIFY_URL
+```
+
+### 沙箱买家账号
+
+| 项目 | 值 |
+|------|-----|
+| 买家账号/密码 | 在开放平台沙箱控制台「沙箱账号」页面查看 |
+| 支付密码 | 通常为 `111111` |
+
+### 测试流程
+
+1. 下单 → 跳转支付页 → 点击"立即支付（支付宝）"
+2. 新窗口打开收银台，用沙箱买家账号完成支付
+3. 原页面每 3 秒轮询 `/api/pay/query/{orderId}`，支付成功后自动跳转
+4. 后端日志输出：`支付回调验签成功`
+
+> **离线演示**：无 ngrok 时，支付成功后手动调用 `GET /api/pay/query/{orderId}` 可触发状态同步。
+
+---
+
 ## ES 全文搜索性能对比
 
 > 数据来自本地实测（Windows PowerShell，5 次，排除第 1 次冷启动均值）。
