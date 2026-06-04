@@ -12,6 +12,7 @@ import com.shop.mapper.OrderMapper;
 import com.shop.service.PayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,20 +24,29 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PayServiceImpl implements PayService {
 
-    private final AlipayClient alipayClient;
+    @Autowired(required = false)
+    private AlipayClient alipayClient;
+
     private final OrderMapper orderMapper;
 
-    @Value("${alipay.public-key}")
+    @Value("${alipay.public-key:}")
     private String alipayPublicKey;
 
-    @Value("${alipay.return-url}")
+    @Value("${alipay.return-url:http://localhost:5173/order-success}")
     private String returnUrl;
 
-    @Value("${alipay.notify-url}")
+    @Value("${alipay.notify-url:http://localhost:8080/api/pay/notify}")
     private String notifyUrl;
+
+    private void checkAlipayConfigured() {
+        if (alipayClient == null) {
+            throw new PayException("支付宝未配置，请设置 ALIPAY_APP_ID / ALIPAY_PRIVATE_KEY / ALIPAY_PUBLIC_KEY 环境变量后重启服务");
+        }
+    }
 
     @Override
     public String createPayForm(String orderNo, BigDecimal amount, String subject) {
+        checkAlipayConfigured();
         AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
         request.setReturnUrl(returnUrl);
         request.setNotifyUrl(notifyUrl);
@@ -62,6 +72,7 @@ public class PayServiceImpl implements PayService {
 
     @Override
     public String queryPayStatus(String orderNo) {
+        checkAlipayConfigured();
         AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
         request.setBizContent(String.format("{\"out_trade_no\":\"%s\"}", orderNo));
         try {

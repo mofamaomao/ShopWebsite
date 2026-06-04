@@ -62,12 +62,12 @@ order:
   timeout-ms: 60000
 
 alipay:
-  app-id: ${ALIPAY_APP_ID}
-  private-key: ${ALIPAY_PRIVATE_KEY}
-  public-key: ${ALIPAY_PUBLIC_KEY}
-  gateway: https://openapi-sandbox.dl.alipaydev.com/gateway.do
-  notify-url: ${ALIPAY_NOTIFY_URL:http://localhost:8080/api/pay/notify}
-  return-url: ${ALIPAY_RETURN_URL:http://localhost:5173/order-success}
+  app-id:      ${ALIPAY_APP_ID:}
+  private-key: ${ALIPAY_PRIVATE_KEY:}
+  public-key:  ${ALIPAY_PUBLIC_KEY:}
+  gateway:     https://openapi-sandbox.dl.alipaydev.com/gateway.do
+  notify-url:  ${ALIPAY_NOTIFY_URL:http://localhost:8080/api/pay/notify}
+  return-url:  ${ALIPAY_RETURN_URL:http://localhost:5173/order-success}
 
 logging:
   level:
