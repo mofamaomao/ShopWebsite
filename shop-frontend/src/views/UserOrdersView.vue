@@ -1,10 +1,13 @@
 <template>
   <div class="orders-page">
-    <h2 class="page-title">我的订单</h2>
+    <div class="page-header">
+      <h2 class="page-title">我的订单</h2>
+      <el-button :icon="Refresh" circle size="small" :loading="loading" @click="manualRefresh" />
+    </div>
 
-    <!-- 状态 Tab -->
+    <!-- 状态 Tab：name 用显式字符串，避免 Element Plus 对 name="" 的处理差异 -->
     <el-tabs v-model="activeTab" @tab-change="onTabChange">
-      <el-tab-pane label="全部" name="" />
+      <el-tab-pane label="全部"   name="all" />
       <el-tab-pane label="待支付" name="PENDING_PAYMENT" />
       <el-tab-pane label="已支付" name="PAID" />
       <el-tab-pane label="已取消" name="CANCELLED" />
@@ -16,7 +19,13 @@
     </div>
 
     <!-- 空状态 -->
-    <el-empty v-else-if="orders.length === 0" description="暂无订单" />
+    <div v-else-if="orders.length === 0" class="empty-wrap">
+      <el-empty description="暂无订单" />
+      <p v-if="retryCount < MAX_RETRY" class="empty-hint">
+        刚刚下单？订单正在处理中，{{ retryCountdown }} 秒后自动刷新…
+      </p>
+      <el-button v-else size="small" @click="manualRefresh">手动刷新</el-button>
+    </div>
 
     <!-- 订单卡片列表 -->
     <template v-else>
@@ -70,12 +79,7 @@
     </template>
 
     <!-- 详情弹窗 -->
-    <el-dialog
-      v-model="detailVisible"
-      title="订单详情"
-      width="680px"
-      destroy-on-close
-    >
+    <el-dialog v-model="detailVisible" title="订单详情" width="680px" destroy-on-close>
       <div v-if="detailOrder" class="detail-wrap">
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="订单号" :span="2">{{ detailOrder.orderNo }}</el-descriptions-item>
@@ -105,11 +109,11 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="单价" prop="price" width="100">
+          <el-table-column label="单价" width="100">
             <template #default="{ row }">¥{{ row.price }}</template>
           </el-table-column>
           <el-table-column label="数量" prop="quantity" width="80" />
-          <el-table-column label="小计" prop="subtotal" width="100">
+          <el-table-column label="小计" width="100">
             <template #default="{ row }">¥{{ row.subtotal }}</template>
           </el-table-column>
         </el-table>
@@ -122,14 +126,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { getUserOrders, getUserOrderDetail, cancelUserOrder } from '@/api/userOrder'
 
 const router = useRouter()
 
-const activeTab  = ref('')
+// Tab 使用 'all' 而非 '' 避免 Element Plus 对空字符串的处理差异
+const activeTab  = ref('all')
 const orders     = ref([])
 const total      = ref(0)
 const page       = ref(1)
@@ -139,21 +145,68 @@ const loading    = ref(false)
 const detailVisible = ref(false)
 const detailOrder   = ref(null)
 
+// MQ 异步延迟自动重试
+const MAX_RETRY      = 3
+const RETRY_INTERVAL = 2000
+let   retryCount     = ref(0)
+const retryCountdown = ref(2)
+let   retryTimer     = null
+let   countdownTimer = null
+
 onMounted(loadOrders)
+onUnmounted(clearRetry)
+
+// 将 Tab 名称映射为 API 的 status 参数（'all' → '' 表示不过滤）
+function tabToStatus(tab) {
+  return tab === 'all' ? '' : tab
+}
 
 async function loadOrders() {
+  clearRetry()
   loading.value = true
   try {
-    const res = await getUserOrders({ page: page.value, size: size.value, status: activeTab.value })
+    const res = await getUserOrders({
+      page: page.value,
+      size: size.value,
+      status: tabToStatus(activeTab.value)
+    })
     orders.value = res.data.list
     total.value  = res.data.total
+
+    // 首次加载为空时自动重试，处理 MQ Consumer 异步落库延迟
+    if (orders.value.length === 0 && retryCount.value < MAX_RETRY) {
+      scheduleRetry()
+    }
   } finally {
     loading.value = false
   }
 }
 
+function scheduleRetry() {
+  retryCountdown.value = RETRY_INTERVAL / 1000
+  countdownTimer = setInterval(() => {
+    retryCountdown.value--
+  }, 1000)
+  retryTimer = setTimeout(async () => {
+    retryCount.value++
+    clearInterval(countdownTimer)
+    await loadOrders()
+  }, RETRY_INTERVAL)
+}
+
+function clearRetry() {
+  clearTimeout(retryTimer)
+  clearInterval(countdownTimer)
+}
+
+function manualRefresh() {
+  retryCount.value = 0
+  loadOrders()
+}
+
 function onTabChange() {
   page.value = 1
+  retryCount.value = 0
   loadOrders()
 }
 
@@ -195,13 +248,29 @@ function formatDate(d) {
   margin: 24px auto;
   padding: 0 16px;
 }
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
 .page-title {
   font-size: 22px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin: 0;
 }
 .loading-wrap {
   padding: 16px 0;
+}
+.empty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.empty-hint {
+  font-size: 13px;
+  color: #909399;
+  margin-top: -8px;
 }
 .order-card {
   border: 1px solid #e4e7ed;
@@ -234,13 +303,8 @@ function formatDate(d) {
   font-size: 13px;
   color: #909399;
 }
-.item-count {
-  color: #409eff;
-}
-.order-price {
-  font-size: 15px;
-  color: #303133;
-}
+.item-count { color: #409eff; }
+.order-price { font-size: 15px; color: #303133; }
 .card-footer {
   display: flex;
   gap: 8px;
@@ -251,9 +315,7 @@ function formatDate(d) {
   justify-content: center;
   margin-top: 24px;
 }
-.detail-wrap {
-  padding: 0 4px;
-}
+.detail-wrap { padding: 0 4px; }
 .items-title {
   margin: 16px 0 8px;
   font-size: 14px;
@@ -264,7 +326,5 @@ function formatDate(d) {
   align-items: center;
   gap: 8px;
 }
-.item-name {
-  font-size: 13px;
-}
+.item-name { font-size: 13px; }
 </style>

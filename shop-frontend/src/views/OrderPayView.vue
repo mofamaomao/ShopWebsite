@@ -27,6 +27,10 @@
       <el-alert v-if="pollingActive" type="info" :closable="false" style="margin-top:16px">
         支付窗口已打开，等待支付结果...
       </el-alert>
+
+      <el-alert type="warning" :closable="false" style="margin-top:16px" show-icon>
+        订单已创建，商品库存已锁定。请在 <strong>{{ formatTime(remainSeconds) }}</strong> 内完成支付，超时订单将自动取消并恢复库存。
+      </el-alert>
     </el-card>
   </div>
 </template>
