@@ -16,8 +16,11 @@
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const orderId    = route.query.orderId
-const totalPrice = route.query.totalPrice   // Bug1 fix: 对齐参数名
+// 兼容两种来源：
+// 1. Vue Router 内部跳转（OrderPayView 轮询成功）：orderId / totalPrice
+// 2. 支付宝同步跳回（sync return）：out_trade_no / total_amount
+const orderId    = route.query.orderId    || route.query.out_trade_no
+const totalPrice = route.query.totalPrice || route.query.total_amount
 </script>
 
 <style scoped>
