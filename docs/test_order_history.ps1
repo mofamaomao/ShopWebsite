@@ -82,9 +82,9 @@ function waitForOrder($orderNo, $tok, $maxWait = 15) {
 # =============================================================
 Write-Host "`n===== Setup: register test users =====" -ForegroundColor Yellow
 
-$TS     = Get-Date -Format 'yyyyMMddHHmmss'
-$PhoneA = "137${TS}".Substring(0, 11)
-$PhoneB = "138${TS}".Substring(0, 11)
+$TS     = Get-Date -Format 'HHmmssff'   # time only (8 digits) ensures uniqueness per run
+$PhoneA = "137$TS"   # 137 + 8 digits = 11 chars
+$PhoneB = "138$TS"   # 138 + 8 digits = 11 chars
 
 $rA = uPost "/auth/register" $null "{`"phone`":`"$PhoneA`",`"password`":`"123456`",`"nickname`":`"TestA_$TS`"}"
 ok "Register UserA  phone=$PhoneA" $rA
