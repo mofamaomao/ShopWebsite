@@ -1,16 +1,14 @@
-package com.shop.entity;
+package com.shop.vo;
 
 import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-public class OrderItem {
-    private Long id;
-    private Long orderId;
+public class OrderItemVO {
     private Long productId;
-    private Integer quantity;
-    private BigDecimal price;
     private String productName;
     private String productImg;
+    private Integer quantity;
+    private BigDecimal price;
     private BigDecimal subtotal;
 }

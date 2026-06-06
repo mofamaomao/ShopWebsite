@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -121,6 +122,7 @@ public class PayServiceImpl implements PayService {
             Order upd = new Order();
             upd.setId(order.getId());
             upd.setStatus("PAID");
+            upd.setPayTime(LocalDateTime.now());
             orderMapper.update(upd);
             log.info("订单状态已更新为 PAID, orderNo={}", orderNo);
             return true;

@@ -9,11 +9,15 @@
         <result property="productId" column="product_id"/>
         <result property="quantity" column="quantity"/>
         <result property="price" column="price"/>
+        <result property="productName" column="product_name"/>
+        <result property="productImg" column="product_img"/>
+        <result property="subtotal" column="subtotal"/>
     </resultMap>
 
     <insert id="insert" parameterType="OrderItem" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO order_item (order_id, product_id, quantity, price)
-        VALUES (#{orderId}, #{productId}, #{quantity}, #{price})
+        INSERT INTO order_item (order_id, product_id, quantity, price, product_name, product_img, subtotal)
+        VALUES (#{orderId}, #{productId}, #{quantity}, #{price},
+                #{productName}, #{productImg}, #{subtotal})
     </insert>
 
     <select id="findByOrderId" resultMap="OrderItemResultMap">

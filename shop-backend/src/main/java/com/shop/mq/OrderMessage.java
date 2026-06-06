@@ -28,5 +28,9 @@ public class OrderMessage implements Serializable {
         private Integer quantity;
         /** 下单时的价格快照，Consumer 不再重查 */
         private BigDecimal price;
+        /** 商品名称快照 */
+        private String productName;
+        /** 商品图片快照 */
+        private String productImg;
     }
 }

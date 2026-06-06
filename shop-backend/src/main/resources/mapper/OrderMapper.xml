@@ -10,6 +10,9 @@
         <result property="totalPrice" column="total_price"/>
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
+        <result property="payTime" column="pay_time"/>
+        <result property="cancelTime" column="cancel_time"/>
+        <result property="remark" column="remark"/>
     </resultMap>
 
     <select id="findById" resultMap="OrderResultMap">
@@ -22,6 +25,23 @@
 
     <select id="findByUserId" resultMap="OrderResultMap">
         SELECT * FROM `order` WHERE user_id = #{userId} ORDER BY created_at DESC
+    </select>
+
+    <select id="findByUserIdWithFilter" resultType="com.shop.vo.OrderListItemVO">
+        SELECT
+            o.id,
+            o.order_no,
+            o.total_price,
+            o.status,
+            o.created_at,
+            o.pay_time,
+            (SELECT COUNT(*) FROM order_item oi WHERE oi.order_id = o.id) AS item_count
+        FROM `order` o
+        WHERE o.user_id = #{userId}
+        <if test="status != null and status != ''">
+            AND o.status = #{status}
+        </if>
+        ORDER BY o.created_at DESC
     </select>
 
     <select id="findAll" resultMap="OrderResultMap">
@@ -42,6 +62,9 @@
         <set>
             <if test="totalPrice != null">total_price = #{totalPrice},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="payTime != null">pay_time = #{payTime},</if>
+            <if test="cancelTime != null">cancel_time = #{cancelTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
         </set>
         WHERE id = #{id}
     </update>

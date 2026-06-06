@@ -23,6 +23,7 @@
         </el-badge>
       </router-link>
       <template v-if="userStore.isLoggedIn">
+        <router-link to="/user/orders" class="orders-link">我的订单</router-link>
         <span class="username">{{ userStore.nickname || '用户' }}</span>
         <el-button text @click="handleLogout">退出</el-button>
       </template>
@@ -95,5 +96,13 @@ function handleLogout() {
 .username {
   color: #606266;
   font-size: 14px;
+}
+.orders-link {
+  font-size: 14px;
+  color: #606266;
+  text-decoration: none;
+}
+.orders-link:hover {
+  color: #409eff;
 }
 </style>

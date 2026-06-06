@@ -1,7 +1,9 @@
 package com.shop.mapper;
 
 import com.shop.entity.Order;
+import com.shop.vo.OrderListItemVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +18,9 @@ public interface OrderMapper {
     boolean existsByOrderNo(String orderNo);
 
     List<Order> findByUserId(Long userId);
+
+    List<OrderListItemVO> findByUserIdWithFilter(@Param("userId") Long userId,
+                                                  @Param("status") String status);
 
     List<Order> findAll();
 

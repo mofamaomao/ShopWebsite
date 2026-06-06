@@ -49,12 +49,16 @@ public class OrderPersistServiceImpl implements OrderPersistService {
                 throw new RuntimeException(
                         "[OrderPersist] MySQL 库存不足 productId=" + itemMsg.getProductId());
             }
+            BigDecimal subtotal = itemMsg.getPrice().multiply(BigDecimal.valueOf(itemMsg.getQuantity()));
             OrderItem oi = new OrderItem();
             oi.setProductId(itemMsg.getProductId());
             oi.setQuantity(itemMsg.getQuantity());
             oi.setPrice(itemMsg.getPrice());
+            oi.setProductName(itemMsg.getProductName() != null ? itemMsg.getProductName() : "");
+            oi.setProductImg(itemMsg.getProductImg() != null ? itemMsg.getProductImg() : "");
+            oi.setSubtotal(subtotal);
             items.add(oi);
-            total = total.add(itemMsg.getPrice().multiply(BigDecimal.valueOf(itemMsg.getQuantity())));
+            total = total.add(subtotal);
         }
 
         // 写订单主表（order_no 唯一约束兜底幂等）

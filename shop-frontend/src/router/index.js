@@ -9,6 +9,7 @@ const routes = [
   { path: '/order-pay', name: 'OrderPay', meta: { requiresAuth: true }, component: () => import('@/views/OrderPayView.vue') },
   { path: '/order-success', name: 'OrderSuccess', meta: { requiresAuth: true }, component: () => import('@/views/OrderSuccessView.vue') },
   { path: '/order-cancelled', name: 'OrderCancelled', component: () => import('@/views/OrderCancelledView.vue') },
+  { path: '/user/orders', name: 'UserOrders', meta: { requiresAuth: true }, component: () => import('@/views/UserOrdersView.vue') },
 
   // 管理后台
   { path: '/admin/login', name: 'AdminLogin', component: () => import('@/views/admin/AdminLoginView.vue') },

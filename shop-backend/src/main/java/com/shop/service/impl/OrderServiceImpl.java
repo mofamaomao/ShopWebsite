@@ -86,7 +86,10 @@ public class OrderServiceImpl implements OrderService {
         for (OrderCreateRequest.OrderItemRequest itemReq : req.getItems()) {
             Product product = productMapper.findById(itemReq.getProductId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-            items.add(new OrderMessage.Item(product.getId(), itemReq.getQuantity(), product.getPrice()));
+            items.add(new OrderMessage.Item(
+                    product.getId(), itemReq.getQuantity(), product.getPrice(),
+                    product.getName(),
+                    product.getImageUrl() != null ? product.getImageUrl() : ""));
         }
         // Bug1 fix: 在 Producer 端预计算 totalPrice，不依赖 Consumer 写库
         BigDecimal totalPrice = items.stream()
@@ -176,6 +179,7 @@ public class OrderServiceImpl implements OrderService {
         Order update = new Order();
         update.setId(order.getId());
         update.setStatus("CANCELLED");
+        update.setCancelTime(LocalDateTime.now());
         orderMapper.update(update);
 
         List<OrderItem> items = orderItemMapper.findByOrderId(order.getId());
