@@ -67,6 +67,9 @@ public class OrderPersistServiceImpl implements OrderPersistService {
         order.setUserId(message.getUserId());
         order.setTotalPrice(total);
         order.setStatus("PENDING_PAYMENT");
+        order.setReceiver(message.getReceiver());
+        order.setPhone(message.getPhone());
+        order.setFullAddress(message.getFullAddress());
         try {
             orderMapper.insert(order);
         } catch (DuplicateKeyException e) {

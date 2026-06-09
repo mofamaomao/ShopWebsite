@@ -67,6 +67,9 @@ public class UserOrderServiceImpl implements UserOrderService {
         vo.setPayTime(order.getPayTime());
         vo.setCancelTime(order.getCancelTime());
         vo.setRemark(order.getRemark());
+        vo.setReceiver(order.getReceiver());
+        vo.setPhone(order.getPhone());
+        vo.setFullAddress(order.getFullAddress());
         vo.setItems(items.stream().map(this::toItemVO).collect(Collectors.toList()));
         return vo;
     }

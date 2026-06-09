@@ -24,6 +24,7 @@
       </router-link>
       <template v-if="userStore.isLoggedIn">
         <router-link to="/user/orders" class="orders-link">我的订单</router-link>
+        <router-link to="/user/addresses" class="orders-link">地址管理</router-link>
         <span class="username">{{ userStore.nickname || '用户' }}</span>
         <el-button text @click="handleLogout">退出</el-button>
       </template>

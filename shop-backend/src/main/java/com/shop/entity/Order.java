@@ -17,4 +17,7 @@ public class Order {
     private LocalDateTime payTime;
     private LocalDateTime cancelTime;
     private String remark;
+    private String receiver;
+    private String phone;
+    private String fullAddress;
 }

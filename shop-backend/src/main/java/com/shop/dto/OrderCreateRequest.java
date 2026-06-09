@@ -13,6 +13,9 @@ public class OrderCreateRequest {
     @NotEmpty(message = "订单商品不能为空")
     private List<OrderItemRequest> items;
 
+    /** 收货地址 ID（可选，不传则不快照地址） */
+    private Long addressId;
+
     @Data
     public static class OrderItemRequest {
 

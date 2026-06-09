@@ -9,6 +9,8 @@ import com.shop.dto.OrderCreateRequest;
 import com.shop.entity.Order;
 import com.shop.entity.OrderItem;
 import com.shop.entity.Product;
+import com.shop.entity.Address;
+import com.shop.mapper.AddressMapper;
 import com.shop.mapper.OrderItemMapper;
 import com.shop.mapper.OrderMapper;
 import com.shop.mapper.ProductMapper;
@@ -43,6 +45,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductMapper       productMapper;
     private final OrderMapper         orderMapper;
     private final OrderItemMapper     orderItemMapper;
+    private final AddressMapper       addressMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final OrderProducer       orderProducer;
     private final MqMessageService    mqMessageService;
@@ -56,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderServiceImpl(ProductMapper productMapper,
                             OrderMapper orderMapper,
                             OrderItemMapper orderItemMapper,
+                            AddressMapper addressMapper,
                             StringRedisTemplate stringRedisTemplate,
                             OrderProducer orderProducer,
                             MqMessageService mqMessageService,
@@ -64,6 +68,7 @@ public class OrderServiceImpl implements OrderService {
         this.productMapper       = productMapper;
         this.orderMapper         = orderMapper;
         this.orderItemMapper     = orderItemMapper;
+        this.addressMapper       = addressMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.orderProducer       = orderProducer;
         this.mqMessageService    = mqMessageService;
@@ -81,6 +86,19 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public OrderVO createOrder(Long userId, OrderCreateRequest req) {
+        // Step 0: 校验并快照收货地址
+        String receiver = null, phone = null, fullAddress = null;
+        if (req.getAddressId() != null) {
+            Address addr = addressMapper.findById(req.getAddressId())
+                    .orElseThrow(() -> new BusinessException(400, "收货地址不存在"));
+            if (!addr.getUserId().equals(userId)) {
+                throw new BusinessException(403, "无权使用此地址");
+            }
+            receiver    = addr.getReceiver();
+            phone       = addr.getPhone();
+            fullAddress = addr.getProvince() + addr.getCity() + addr.getDistrict() + addr.getDetail();
+        }
+
         // Step 1: 校验商品 + 构建含价格快照的 items
         List<OrderMessage.Item> items = new ArrayList<>();
         for (OrderCreateRequest.OrderItemRequest itemReq : req.getItems()) {
@@ -110,7 +128,14 @@ public class OrderServiceImpl implements OrderService {
 
         // Step 3: 写 mq_message 表（status=0），失败回滚 Redis
         String orderId = UUID.randomUUID().toString();
-        OrderMessage message = new OrderMessage(orderId, userId, items, LocalDateTime.now());
+        OrderMessage message = new OrderMessage();
+        message.setOrderId(orderId);
+        message.setUserId(userId);
+        message.setItems(items);
+        message.setCreateTime(LocalDateTime.now());
+        message.setReceiver(receiver);
+        message.setPhone(phone);
+        message.setFullAddress(fullAddress);
         try {
             String content = objectMapper.writeValueAsString(message);
             mqMessageService.save(orderId, content);

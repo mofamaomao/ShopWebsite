@@ -19,6 +19,10 @@ public class OrderMessage implements Serializable {
     private Long userId;
     private List<Item> items;
     private LocalDateTime createTime;
+    /** 收货地址快照（下单时写入，允许为 null） */
+    private String receiver;
+    private String phone;
+    private String fullAddress;
 
     @Data
     @NoArgsConstructor

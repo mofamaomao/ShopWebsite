@@ -10,9 +10,12 @@
         <result property="totalPrice" column="total_price"/>
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
-        <result property="payTime" column="pay_time"/>
-        <result property="cancelTime" column="cancel_time"/>
-        <result property="remark" column="remark"/>
+        <result property="payTime"      column="pay_time"/>
+        <result property="cancelTime"   column="cancel_time"/>
+        <result property="remark"       column="remark"/>
+        <result property="receiver"     column="receiver"/>
+        <result property="phone"        column="phone"/>
+        <result property="fullAddress"  column="full_address"/>
     </resultMap>
 
     <select id="findById" resultMap="OrderResultMap">
@@ -53,8 +56,11 @@
     </select>
 
     <insert id="insert" parameterType="Order" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO `order` (order_no, user_id, total_price, status, created_at)
-        VALUES (#{orderNo}, #{userId}, #{totalPrice}, #{status}, NOW())
+        INSERT INTO `order`
+          (order_no, user_id, total_price, status, created_at, receiver, phone, full_address)
+        VALUES
+          (#{orderNo}, #{userId}, #{totalPrice}, #{status}, NOW(),
+           #{receiver}, #{phone}, #{fullAddress})
     </insert>
 
     <update id="update" parameterType="Order">
@@ -62,9 +68,12 @@
         <set>
             <if test="totalPrice != null">total_price = #{totalPrice},</if>
             <if test="status != null">status = #{status},</if>
-            <if test="payTime != null">pay_time = #{payTime},</if>
-            <if test="cancelTime != null">cancel_time = #{cancelTime},</if>
-            <if test="remark != null">remark = #{remark},</if>
+            <if test="payTime     != null">pay_time     = #{payTime},</if>
+            <if test="cancelTime  != null">cancel_time  = #{cancelTime},</if>
+            <if test="remark      != null">remark       = #{remark},</if>
+            <if test="receiver    != null">receiver     = #{receiver},</if>
+            <if test="phone       != null">phone        = #{phone},</if>
+            <if test="fullAddress != null">full_address = #{fullAddress},</if>
         </set>
         WHERE id = #{id}
     </update>

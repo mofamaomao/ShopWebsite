@@ -92,6 +92,12 @@
           <el-descriptions-item v-if="detailOrder.cancelTime" label="取消时间" :span="2">
             {{ formatDate(detailOrder.cancelTime) }}
           </el-descriptions-item>
+          <el-descriptions-item v-if="detailOrder.receiver" label="收货人">
+            {{ detailOrder.receiver }}（{{ detailOrder.phone }}）
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detailOrder.fullAddress" label="收货地址" :span="detailOrder.receiver ? 1 : 2">
+            {{ detailOrder.fullAddress }}
+          </el-descriptions-item>
         </el-descriptions>
 
         <h4 class="items-title">商品明细</h4>
@@ -170,8 +176,8 @@ async function loadOrders() {
       size: size.value,
       status: tabToStatus(activeTab.value)
     })
-    orders.value = res.data.list
-    total.value  = res.data.total
+    orders.value = res.list
+    total.value  = res.total
 
     // 首次加载为空时自动重试，处理 MQ Consumer 异步落库延迟
     if (orders.value.length === 0 && retryCount.value < MAX_RETRY) {
@@ -212,7 +218,7 @@ function onTabChange() {
 
 async function viewDetail(orderNo) {
   const res = await getUserOrderDetail(orderNo)
-  detailOrder.value   = res.data
+  detailOrder.value   = res
   detailVisible.value = true
 }
 
