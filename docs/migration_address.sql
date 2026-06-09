@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `address` (
   `created_at` DATETIME     NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_address_user ON `address`(`user_id`);
+CREATE INDEX idx_address_user ON `address`(`user_id`);
 
 ALTER TABLE `order`
   ADD COLUMN IF NOT EXISTS `receiver`     VARCHAR(20)  NULL COMMENT '收货人快照' AFTER `remark`,
