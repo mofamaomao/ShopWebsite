@@ -108,7 +108,7 @@ function formatDate(d) {
   padding: 0 16px;
 }
 .balance-card {
-  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, oklch(0.70 0.16 353deg) 100%);
   border-radius: 12px;
   padding: 32px 40px;
   color: #fff;

@@ -163,7 +163,7 @@ watch(() => route.query.keyword, () => {
   font-size: 14px;
 }
 .result-count { flex-shrink: 0; }
-.active-filter { color: #409eff; }
+.active-filter { color: var(--color-primary); }
 .filter-controls {
   display: flex;
   flex-wrap: wrap;
@@ -205,7 +205,7 @@ watch(() => route.query.keyword, () => {
   transition: background 0.2s;
 }
 .category-item:hover { background: #f5f7fa; }
-.category-item.active { background: #ecf5ff; color: #409eff; font-weight: 500; }
+.category-item.active { background: var(--color-primary-bg); color: var(--color-primary); font-weight: 500; }
 
 .product-grid {
   flex: 1;
@@ -258,7 +258,7 @@ watch(() => route.query.keyword, () => {
   min-height: 2.9em;
 }
 .product-price {
-  color: #f56c6c;
+  color: var(--color-price);
   font-size: 18px;
   font-weight: 700;
 }

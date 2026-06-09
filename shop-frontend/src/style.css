@@ -1,3 +1,52 @@
+/* ─────────────────────────── Brand tokens ─────────────────────────── */
+/*
+ * Strategy: Restrained
+ * Brand anchor: rose-pink, hue 353° (oklch)
+ * Neutrals are faintly tinted toward hue 353° for subconscious cohesion.
+ * Primary color reserved for: CTAs, active/selected states, key numbers.
+ */
+:root {
+  /* Brand */
+  --color-primary:          oklch(0.58 0.22 353deg);
+  --color-primary-hover:    oklch(0.50 0.22 353deg);
+  --color-primary-bg:       oklch(0.95 0.04 353deg);
+
+  /* Page structure — neutrals tinted toward hue 353° */
+  --color-bg-page:          oklch(0.960 0.007 353deg);
+  --color-border:           oklch(0.910 0.007 353deg);
+  --color-border-light:     oklch(0.940 0.005 353deg);
+
+  /* Text scale (all ≥4.5:1 on white) */
+  --color-ink:              oklch(0.220 0.015 353deg);
+  --color-muted:            oklch(0.440 0.010 353deg);
+  --color-subtle:           oklch(0.610 0.007 353deg);
+
+  /* Semantic */
+  --color-price:            oklch(0.56 0.20 15deg);
+  --color-success:          oklch(0.56 0.15 145deg);
+  --color-warning:          oklch(0.65 0.16 55deg);
+
+  /* ── Element Plus overrides ── */
+  --el-color-primary:              var(--color-primary);
+  --el-color-primary-light-3:      oklch(0.70 0.16 353deg);
+  --el-color-primary-light-5:      oklch(0.79 0.12 353deg);
+  --el-color-primary-light-7:      oklch(0.87 0.07 353deg);
+  --el-color-primary-light-8:      oklch(0.91 0.05 353deg);
+  --el-color-primary-light-9:      oklch(0.95 0.03 353deg);
+  --el-color-primary-dark-2:       oklch(0.48 0.22 353deg);
+  --el-bg-color-page:              var(--color-bg-page);
+  --el-border-color:               var(--color-border);
+  --el-border-color-light:         var(--color-border-light);
+  --el-border-color-lighter:       oklch(0.955 0.004 353deg);
+  --el-text-color-primary:         var(--color-ink);
+  --el-text-color-regular:         var(--color-muted);
+  --el-text-color-secondary:       var(--color-subtle);
+  --el-fill-color-light:           oklch(0.975 0.004 353deg);
+  --el-fill-color-lighter:         oklch(0.983 0.003 353deg);
+  --el-table-header-bg-color:      oklch(0.965 0.005 353deg);
+  --el-table-row-hover-bg-color:   oklch(0.970 0.005 353deg);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -6,8 +55,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f0f2f5;
-  color: #303133;
+  background: var(--color-bg-page);
+  color: var(--color-ink);
 }
 
 a {

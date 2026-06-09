@@ -73,7 +73,7 @@ function handleLogout() {
   align-items: center;
   justify-content: space-between;
   background: #fff;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border-light);
   padding: 0 24px;
   position: sticky;
   top: 0;
@@ -83,7 +83,7 @@ function handleLogout() {
 .logo {
   font-size: 22px;
   font-weight: bold;
-  color: #409eff;
+  color: var(--color-primary);
 }
 .navbar-right {
   display: flex;
@@ -91,20 +91,20 @@ function handleLogout() {
   gap: 12px;
 }
 .cart-link {
-  color: #606266;
+  color: var(--color-muted);
   display: flex;
   align-items: center;
 }
 .username {
-  color: #606266;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .orders-link {
   font-size: 14px;
-  color: #606266;
+  color: var(--color-muted);
   text-decoration: none;
 }
 .orders-link:hover {
-  color: #409eff;
+  color: var(--color-primary);
 }
 </style>

@@ -285,7 +285,7 @@ async function doCheckout() {
   border-radius: 4px;
 }
 .total { font-size: 16px; }
-.total strong { color: #f56c6c; font-size: 22px; }
+.total strong { color: var(--color-price); font-size: 22px; }
 
 /* 结算弹窗 */
 .checkout-body {
@@ -305,7 +305,7 @@ async function doCheckout() {
   transition: border-color 0.2s;
 }
 .addr-option:hover { border-color: #c6e2ff; }
-.addr-option--selected { border-color: #409eff; background: #ecf5ff; }
+.addr-option--selected { border-color: var(--color-primary); background: var(--color-primary-bg); }
 .addr-info { flex: 1; }
 .addr-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .receiver { font-size: 14px; font-weight: 600; color: #303133; }
@@ -338,5 +338,5 @@ async function doCheckout() {
 .deduction { color: #67c23a; }
 .deduct-val { color: #67c23a; font-weight: 600; }
 .total-row { font-size: 15px; color: #303133; margin-top: 4px; }
-.final-price { color: #f56c6c; font-size: 20px; }
+.final-price { color: var(--color-price); font-size: 20px; }
 </style>
