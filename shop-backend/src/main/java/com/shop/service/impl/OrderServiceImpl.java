@@ -5,31 +5,37 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shop.common.BusinessException;
 import com.shop.common.ErrorCode;
 import com.shop.common.RedisKeyConstants;
+import com.shop.config.RabbitMQConfig;
 import com.shop.dto.OrderCreateRequest;
+import com.shop.entity.Address;
 import com.shop.entity.Order;
 import com.shop.entity.OrderItem;
 import com.shop.entity.Product;
-import com.shop.entity.Address;
 import com.shop.mapper.AddressMapper;
 import com.shop.mapper.OrderItemMapper;
 import com.shop.mapper.OrderMapper;
 import com.shop.mapper.ProductMapper;
+import com.shop.mapper.UserMapper;
 import com.shop.mq.OrderMessage;
 import com.shop.mq.OrderProducer;
+import com.shop.mq.PointsMessage;
 import com.shop.service.CartService;
 import com.shop.service.MqMessageService;
 import com.shop.service.OrderService;
 import com.shop.vo.OrderStatusVO;
 import com.shop.vo.OrderVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -46,11 +52,19 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper         orderMapper;
     private final OrderItemMapper     orderItemMapper;
     private final AddressMapper       addressMapper;
+    private final UserMapper          userMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final OrderProducer       orderProducer;
+    private final RabbitTemplate      rabbitTemplate;
     private final MqMessageService    mqMessageService;
     private final CartService         cartService;
     private final ObjectMapper        objectMapper;
+
+    @Value("${points.redeem-rate:100}")
+    private int redeemRate;
+
+    @Value("${points.max-redeem-pct:0.2}")
+    private double maxRedeemPct;
 
     @Autowired
     @Qualifier("orderDeductScript")
@@ -60,8 +74,10 @@ public class OrderServiceImpl implements OrderService {
                             OrderMapper orderMapper,
                             OrderItemMapper orderItemMapper,
                             AddressMapper addressMapper,
+                            UserMapper userMapper,
                             StringRedisTemplate stringRedisTemplate,
                             OrderProducer orderProducer,
+                            RabbitTemplate rabbitTemplate,
                             MqMessageService mqMessageService,
                             CartService cartService,
                             ObjectMapper objectMapper) {
@@ -69,8 +85,10 @@ public class OrderServiceImpl implements OrderService {
         this.orderMapper         = orderMapper;
         this.orderItemMapper     = orderItemMapper;
         this.addressMapper       = addressMapper;
+        this.userMapper          = userMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.orderProducer       = orderProducer;
+        this.rabbitTemplate      = rabbitTemplate;
         this.mqMessageService    = mqMessageService;
         this.cartService         = cartService;
         this.objectMapper        = objectMapper;
@@ -78,11 +96,13 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 异步下单：
-     *   1. 参数校验 + 价格快照
+     *   0. 地址校验快照
+     *   1. 商品校验 + 价格快照
      *   2. Redis Lua 原子预扣库存
-     *   3. 写 mq_message 表（status=0），失败回滚 Redis
-     *   4. 发送 MQ，confirm 回调异步更新 status=1/2
-     *   5. 立即返回 PROCESSING
+     *   2.5 积分抵扣计算（不执行扣减，传给 Consumer）
+     *   3. 写 mq_message 表，失败回滚 Redis
+     *   4. 发送 MQ
+     *   5. 立即返回
      */
     @Override
     public OrderVO createOrder(Long userId, OrderCreateRequest req) {
@@ -109,12 +129,11 @@ public class OrderServiceImpl implements OrderService {
                     product.getName(),
                     product.getImageUrl() != null ? product.getImageUrl() : ""));
         }
-        // Bug1 fix: 在 Producer 端预计算 totalPrice，不依赖 Consumer 写库
         BigDecimal totalPrice = items.stream()
                 .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Step 2: Redis 预扣库存，失败立即回滚已扣数量
+        // Step 2: Redis 预扣库存
         List<OrderMessage.Item> deducted = new ArrayList<>();
         try {
             for (OrderMessage.Item item : items) {
@@ -126,7 +145,24 @@ public class OrderServiceImpl implements OrderService {
             throw e;
         }
 
-        // Step 3: 写 mq_message 表（status=0），失败回滚 Redis
+        // Step 2.5: 积分抵扣预计算（实际扣减在 Consumer 事务内执行）
+        int usablePoints = 0;
+        BigDecimal pointsDeduction = BigDecimal.ZERO;
+        if (Boolean.TRUE.equals(req.getUsePoints())) {
+            int userPoints = userMapper.getPoints(userId);
+            if (userPoints > 0) {
+                BigDecimal maxDeductAmt = totalPrice.multiply(BigDecimal.valueOf(maxRedeemPct));
+                int maxDeductPoints = maxDeductAmt.multiply(BigDecimal.valueOf(redeemRate))
+                                                   .setScale(0, RoundingMode.DOWN).intValue();
+                usablePoints = Math.min(userPoints, maxDeductPoints);
+                if (usablePoints > 0) {
+                    pointsDeduction = BigDecimal.valueOf(usablePoints)
+                                                .divide(BigDecimal.valueOf(redeemRate), 2, RoundingMode.DOWN);
+                }
+            }
+        }
+
+        // Step 3: 写 mq_message 表
         String orderId = UUID.randomUUID().toString();
         OrderMessage message = new OrderMessage();
         message.setOrderId(orderId);
@@ -136,6 +172,8 @@ public class OrderServiceImpl implements OrderService {
         message.setReceiver(receiver);
         message.setPhone(phone);
         message.setFullAddress(fullAddress);
+        message.setUsablePoints(usablePoints);
+        message.setPointsDeduction(pointsDeduction);
         try {
             String content = objectMapper.writeValueAsString(message);
             mqMessageService.save(orderId, content);
@@ -144,18 +182,18 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(500, "下单失败，请重试");
         }
 
-        // Step 4: 异步发送 MQ（confirm 回调更新 mq_message status）
+        // Step 4: 异步发送 MQ
         orderProducer.send(message);
-
-        // Bug2 fix: MQ 消息发出后清空购物车（Redis Hash + 前端 Pinia 各自负责）
         cartService.clearCart(userId);
 
-        // Step 5: 立即返回（DB 写入由 Consumer 异步完成）
+        // Step 5: 立即返回（展示折后价）
+        BigDecimal displayPrice = totalPrice.subtract(pointsDeduction);
         OrderVO vo = new OrderVO();
         vo.setOrderId(orderId);
-        vo.setTotalPrice(totalPrice);      // Bug1 fix: 返回预计算的金额
+        vo.setTotalPrice(displayPrice);
         vo.setStatus("PENDING_PAYMENT");
-        log.info("[Order] created orderId={} userId={} total={}", orderId, userId, totalPrice);
+        log.info("[Order] created orderId={} userId={} total={} pointsDeduction={}",
+                orderId, userId, displayPrice, pointsDeduction);
         return vo;
     }
 
@@ -227,7 +265,16 @@ public class OrderServiceImpl implements OrderService {
         Order update = new Order();
         update.setId(order.getId());
         update.setStatus("PAID");
+        update.setPayTime(LocalDateTime.now());
         orderMapper.update(update);
+
+        // 发放积分（异步，实付金额）
+        try {
+            PointsMessage pm = new PointsMessage(orderNo, order.getUserId(), order.getTotalPrice());
+            rabbitTemplate.convertAndSend(RabbitMQConfig.POINTS_EXCHANGE, RabbitMQConfig.POINTS_KEY, pm);
+        } catch (Exception e) {
+            log.error("[Pay-mock] points message failed orderId={} err={}", orderNo, e.getMessage(), e);
+        }
         log.info("[Pay] orderId={} userId={} → PAID", orderNo, userId);
     }
 
@@ -237,7 +284,6 @@ public class OrderServiceImpl implements OrderService {
         OrderStatusVO vo = new OrderStatusVO();
         vo.setOrderId(orderNo);
         if (order == null) {
-            // Consumer 尚未落库，返回处理中状态
             vo.setStatus("PROCESSING");
             vo.setRemainSeconds(1800);
             return vo;

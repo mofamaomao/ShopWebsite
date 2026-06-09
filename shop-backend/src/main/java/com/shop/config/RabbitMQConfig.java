@@ -31,6 +31,13 @@ public class RabbitMQConfig {
     public static final String ORDER_CANCEL_EXCHANGE = "order.cancel.exchange";
     public static final String ORDER_CANCEL_QUEUE   = "order.cancel.queue";
 
+    // ── 积分队列 ──────────────────────────────────────────────────────────
+    public static final String POINTS_EXCHANGE = "points.exchange";
+    public static final String POINTS_QUEUE    = "points.queue";
+    public static final String POINTS_KEY      = "points.key";
+    public static final String POINTS_DLQ      = "points.dlq";
+    public static final String POINTS_DLX      = "points.dlx";
+
     @Value("${order.timeout-ms:1800000}")
     private long orderTimeoutMs;
 
@@ -102,6 +109,30 @@ public class RabbitMQConfig {
     @Bean
     public Binding orderCancelBinding() {
         return BindingBuilder.bind(orderCancelQueue()).to(orderCancelExchange()).with(ORDER_CANCEL_QUEUE);
+    }
+
+    // ── 积分队列 Bean ─────────────────────────────────────────────────────
+    @Bean public DirectExchange pointsExchange()    { return new DirectExchange(POINTS_EXCHANGE); }
+    @Bean public DirectExchange pointsDlxExchange() { return new DirectExchange(POINTS_DLX); }
+
+    @Bean
+    public Queue pointsQueue() {
+        return QueueBuilder.durable(POINTS_QUEUE)
+                .withArgument("x-dead-letter-exchange", POINTS_DLX)
+                .withArgument("x-dead-letter-routing-key", POINTS_DLQ)
+                .build();
+    }
+
+    @Bean public Queue pointsDlq() { return QueueBuilder.durable(POINTS_DLQ).build(); }
+
+    @Bean
+    public Binding pointsBinding() {
+        return BindingBuilder.bind(pointsQueue()).to(pointsExchange()).with(POINTS_KEY);
+    }
+
+    @Bean
+    public Binding pointsDlqBinding() {
+        return BindingBuilder.bind(pointsDlq()).to(pointsDlxExchange()).with(POINTS_DLQ);
     }
 
     // ── JSON 消息序列化 ───────────────────────────────────────────────────

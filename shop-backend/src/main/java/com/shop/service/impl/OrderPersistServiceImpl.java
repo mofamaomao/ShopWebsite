@@ -3,9 +3,12 @@ package com.shop.service.impl;
 import com.shop.config.RabbitMQConfig;
 import com.shop.entity.Order;
 import com.shop.entity.OrderItem;
+import com.shop.entity.PointsRecord;
 import com.shop.mapper.OrderItemMapper;
 import com.shop.mapper.OrderMapper;
+import com.shop.mapper.PointsRecordMapper;
 import com.shop.mapper.ProductMapper;
+import com.shop.mapper.UserMapper;
 import com.shop.mq.OrderCancelMessage;
 import com.shop.mq.OrderMessage;
 import com.shop.service.OrderPersistService;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,10 +29,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderPersistServiceImpl implements OrderPersistService {
 
-    private final ProductMapper productMapper;
-    private final OrderMapper orderMapper;
-    private final OrderItemMapper orderItemMapper;
-    private final RabbitTemplate rabbitTemplate;
+    private final ProductMapper      productMapper;
+    private final OrderMapper        orderMapper;
+    private final OrderItemMapper    orderItemMapper;
+    private final UserMapper         userMapper;
+    private final PointsRecordMapper pointsRecordMapper;
+    private final RabbitTemplate     rabbitTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -42,7 +48,7 @@ public class OrderPersistServiceImpl implements OrderPersistService {
         BigDecimal total = BigDecimal.ZERO;
         List<OrderItem> items = new ArrayList<>();
 
-        // 先扣减 MySQL 库存（失败则整体回滚）
+        // 扣减 MySQL 库存
         for (OrderMessage.Item itemMsg : message.getItems()) {
             int updated = productMapper.decreaseStock(itemMsg.getProductId(), itemMsg.getQuantity());
             if (updated == 0) {
@@ -61,11 +67,40 @@ public class OrderPersistServiceImpl implements OrderPersistService {
             total = total.add(subtotal);
         }
 
-        // 写订单主表（order_no 唯一约束兜底幂等）
+        // 积分抵扣（与写库在同一事务，保证原子性）
+        BigDecimal actualTotal = total;
+        int usablePoints = message.getUsablePoints() != null ? message.getUsablePoints() : 0;
+        BigDecimal pointsDeduction = message.getPointsDeduction() != null
+                ? message.getPointsDeduction() : BigDecimal.ZERO;
+
+        if (usablePoints > 0) {
+            int deducted = userMapper.deductPoints(message.getUserId(), usablePoints);
+            if (deducted == 0) {
+                // 积分余额不足（并发场景），降级为全价
+                log.warn("[OrderPersist] points insufficient, full price orderId={}", message.getOrderId());
+                usablePoints = 0;
+                pointsDeduction = BigDecimal.ZERO;
+            } else {
+                actualTotal = total.subtract(pointsDeduction);
+                int newBalance = userMapper.getPoints(message.getUserId());
+                PointsRecord pr = new PointsRecord();
+                pr.setUserId(message.getUserId());
+                pr.setType(2);
+                pr.setPoints(-usablePoints);
+                pr.setBalance(newBalance);
+                pr.setSource("积分抵扣");
+                pr.setOrderId(message.getOrderId());
+                pr.setCreatedAt(LocalDateTime.now());
+                pointsRecordMapper.insert(pr);
+                log.info("[OrderPersist] points deducted={} orderId={}", usablePoints, message.getOrderId());
+            }
+        }
+
+        // 写订单主表
         Order order = new Order();
         order.setOrderNo(message.getOrderId());
         order.setUserId(message.getUserId());
-        order.setTotalPrice(total);
+        order.setTotalPrice(actualTotal);
         order.setStatus("PENDING_PAYMENT");
         order.setReceiver(message.getReceiver());
         order.setPhone(message.getPhone());
@@ -83,9 +118,9 @@ public class OrderPersistServiceImpl implements OrderPersistService {
             orderItemMapper.insert(oi);
         }
 
-        log.info("[OrderPersist] order saved orderId={} total={}", message.getOrderId(), total);
+        log.info("[OrderPersist] order saved orderId={} total={}", message.getOrderId(), actualTotal);
 
-        // 发送延迟取消消息（TTL 到期后路由到 order.cancel.queue）
+        // 发送延迟取消消息
         OrderCancelMessage cancelMsg = OrderCancelMessage.builder()
                 .orderId(message.getOrderId())
                 .userId(message.getUserId())

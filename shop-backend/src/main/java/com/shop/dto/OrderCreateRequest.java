@@ -16,6 +16,9 @@ public class OrderCreateRequest {
     /** 收货地址 ID（可选，不传则不快照地址） */
     private Long addressId;
 
+    /** 是否使用积分抵扣（可选，默认 false） */
+    private Boolean usePoints = false;
+
     @Data
     public static class OrderItemRequest {
 

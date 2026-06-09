@@ -23,6 +23,10 @@ public class OrderMessage implements Serializable {
     private String receiver;
     private String phone;
     private String fullAddress;
+    /** 积分抵扣：待扣积分数（0 = 不使用积分） */
+    private Integer usablePoints = 0;
+    /** 积分抵扣金额（元），Consumer 将从 totalPrice 中扣除 */
+    private BigDecimal pointsDeduction = BigDecimal.ZERO;
 
     @Data
     @NoArgsConstructor

@@ -11,6 +11,7 @@ const routes = [
   { path: '/order-cancelled', name: 'OrderCancelled', component: () => import('@/views/OrderCancelledView.vue') },
   { path: '/user/orders', name: 'UserOrders', meta: { requiresAuth: true }, component: () => import('@/views/UserOrdersView.vue') },
   { path: '/user/addresses', name: 'UserAddresses', meta: { requiresAuth: true }, component: () => import('@/views/UserAddressesView.vue') },
+  { path: '/user/points',   name: 'UserPoints',   meta: { requiresAuth: true }, component: () => import('@/views/UserPointsView.vue') },
 
   // 管理后台
   { path: '/admin/login', name: 'AdminLogin', component: () => import('@/views/admin/AdminLoginView.vue') },

@@ -69,6 +69,11 @@ alipay:
   notify-url:  ${ALIPAY_NOTIFY_URL:http://localhost:8080/api/pay/notify}
   return-url:  ${ALIPAY_RETURN_URL:http://localhost:5173/order-success}
 
+points:
+  earn-rate: 10       # 每消费 1 元获得 10 积分
+  redeem-rate: 100    # 每 100 积分抵扣 1 元
+  max-redeem-pct: 0.2 # 每笔订单最多用积分抵扣 20%
+
 logging:
   level:
     com.shop: DEBUG

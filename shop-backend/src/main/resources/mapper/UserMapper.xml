@@ -10,6 +10,7 @@
         <result property="nickname" column="nickname"/>
         <result property="role" column="role"/>
         <result property="createdAt" column="created_at"/>
+        <result property="points"    column="points"/>
     </resultMap>
 
     <select id="findById" resultMap="UserResultMap">
@@ -42,5 +43,20 @@
     <delete id="deleteById">
         DELETE FROM `user` WHERE id = #{id}
     </delete>
+
+    <select id="getPoints" resultType="int">
+        SELECT COALESCE(points, 0) FROM `user` WHERE id = #{userId}
+    </select>
+
+    <!-- COALESCE 处理历史用户 points=NULL 的情况 -->
+    <update id="addPoints">
+        UPDATE `user` SET points = COALESCE(points, 0) + #{delta} WHERE id = #{userId}
+    </update>
+
+    <!-- AND points >= #{delta} 防超扣，返回 0 行表示余额不足 -->
+    <update id="deductPoints">
+        UPDATE `user` SET points = points - #{delta}
+        WHERE id = #{userId} AND COALESCE(points, 0) >= #{delta}
+    </update>
 
 </mapper>

@@ -7,11 +7,14 @@ import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.shop.common.PayException;
+import com.shop.config.RabbitMQConfig;
 import com.shop.entity.Order;
 import com.shop.mapper.OrderMapper;
+import com.shop.mq.PointsMessage;
 import com.shop.service.PayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -28,7 +31,8 @@ public class PayServiceImpl implements PayService {
     @Autowired(required = false)
     private AlipayClient alipayClient;
 
-    private final OrderMapper orderMapper;
+    private final OrderMapper    orderMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     @Value("${alipay.public-key:}")
     private String alipayPublicKey;
@@ -125,6 +129,15 @@ public class PayServiceImpl implements PayService {
             upd.setPayTime(LocalDateTime.now());
             orderMapper.update(upd);
             log.info("订单状态已更新为 PAID, orderNo={}", orderNo);
+
+            // ⑤ 发放积分（MQ 异步，幂等消费）
+            try {
+                PointsMessage pm = new PointsMessage(orderNo, order.getUserId(), order.getTotalPrice());
+                rabbitTemplate.convertAndSend(RabbitMQConfig.POINTS_EXCHANGE, RabbitMQConfig.POINTS_KEY, pm);
+                log.info("积分消息已发送, orderNo={}", orderNo);
+            } catch (Exception e) {
+                log.error("积分消息发送失败, orderNo={} err={}", orderNo, e.getMessage(), e);
+            }
             return true;
 
         } catch (Exception e) {
