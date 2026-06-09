@@ -8,7 +8,7 @@
           <el-table-column label="单价" width="120">
             <template #default="{ row }">¥{{ row.price }}</template>
           </el-table-column>
-          <el-table-column label="数量" width="180">
+          <el-table-column label="数量" width="160">
             <template #default="{ row }">
               <el-input-number
                 v-model="row.quantity"
@@ -24,7 +24,16 @@
           </el-table-column>
           <el-table-column label="操作" width="100">
             <template #default="{ row }">
-              <el-button type="danger" size="small" text @click="handleRemove(row)">删除</el-button>
+              <el-popconfirm
+                title="确定要删除这件商品吗？"
+                confirm-button-text="删除"
+                cancel-button-text="取消"
+                @confirm="handleRemove(row)"
+              >
+                <template #reference>
+                  <el-button type="danger" size="small" text>删除</el-button>
+                </template>
+              </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
@@ -82,7 +91,8 @@
           <div class="section-title">积分优惠</div>
           <div class="points-row" v-if="pointsInfo">
             <div class="points-desc">
-              当前积分 <strong>{{ pointsInfo.balance }}</strong>，
+              当前积分 <strong>{{ pointsInfo.balance }}</strong>
+              <span class="rate-hint">（{{ pointsInfo.redeemRate }} 分 = ¥1）</span>，
               本单最多可抵扣 <strong class="deduction-text">¥{{ maxDeductionDisplay }}</strong>
             </div>
             <el-switch
@@ -90,6 +100,9 @@
               :disabled="pointsInfo.balance === 0"
               active-text="使用积分"
             />
+          </div>
+          <div v-if="pointsInfo && pointsInfo.balance === 0" class="points-empty-hint">
+            暂无积分可用，购物后可获得积分
           </div>
 
           <!-- 金额汇总 -->
@@ -147,7 +160,6 @@ const addrLoading = ref(false)
 const usePoints = ref(false)
 const pointsInfo = ref(null)
 
-// 积分抵扣计算（与后端逻辑保持一致）
 const usablePoints = computed(() => {
   if (!usePoints.value || !pointsInfo.value || !cart.value) return 0
   const { balance, redeemRate, maxRedeemPct } = pointsInfo.value
@@ -158,7 +170,7 @@ const usablePoints = computed(() => {
 })
 
 const pointsDeduction = computed(() => {
-  if (!pointsInfo.value || usablePoints.value === 0) return 0
+  if (!pointsInfo.value || !pointsInfo.value.redeemRate || usablePoints.value === 0) return 0
   return Math.floor(usablePoints.value * 100 / pointsInfo.value.redeemRate) / 100
 })
 
@@ -168,7 +180,7 @@ const finalPrice = computed(() => {
 })
 
 const maxDeductionDisplay = computed(() => {
-  if (!pointsInfo.value || !cart.value) return '0.00'
+  if (!pointsInfo.value || !cart.value || !pointsInfo.value.redeemRate) return '0.00'
   const { balance, redeemRate, maxRedeemPct } = pointsInfo.value
   const total = parseFloat(cart.value.total)
   const maxPts = Math.min(balance, Math.floor(total * maxRedeemPct * redeemRate))
@@ -179,6 +191,8 @@ async function fetchCart() {
   loading.value = true
   try {
     cart.value = await getCart()
+  } catch (err) {
+    ElMessage.error(err.message || '购物车加载失败，请刷新重试')
   } finally {
     loading.value = false
   }
@@ -229,6 +243,11 @@ async function doCheckout() {
     ElMessage.warning('请选择收货地址')
     return
   }
+  if (!cart.value?.items?.length) {
+    ElMessage.warning('购物车已空，请重新选购')
+    addrDialogVisible.value = false
+    return
+  }
   const items = cart.value.items.map(i => ({ productId: i.productId, quantity: i.quantity }))
   ordering.value = true
   try {
@@ -269,7 +288,11 @@ async function doCheckout() {
 .total strong { color: #f56c6c; font-size: 22px; }
 
 /* 结算弹窗 */
-.checkout-body { padding: 0 4px; }
+.checkout-body {
+  padding: 0 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
 .section-title { font-size: 13px; font-weight: 600; color: #606266; margin-bottom: 10px; }
 .addr-options { display: flex; flex-direction: column; gap: 8px; }
 .addr-option {
@@ -294,9 +317,16 @@ async function doCheckout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 .points-desc { font-size: 13px; color: #606266; }
+.rate-hint { color: #909399; font-size: 12px; }
 .deduction-text { color: #e6a23c; }
+.points-empty-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 6px;
+}
 
 .price-summary { display: flex; flex-direction: column; gap: 8px; }
 .price-row {

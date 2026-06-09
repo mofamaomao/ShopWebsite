@@ -40,16 +40,21 @@
           :key="p.id"
           class="product-card"
           shadow="hover"
+          :body-style="{ padding: '0' }"
           @click="$router.push(`/product/${p.id}`)"
         >
           <div class="product-img">
-            <el-image v-if="p.imageUrl" :src="p.imageUrl" fit="cover" style="width:100%;height:100%" />
-            <el-icon v-else size="60" color="#c0c4cc"><Picture /></el-icon>
+            <el-image v-if="p.imageUrl" :src="p.imageUrl" fit="cover" style="width:100%;height:100%" lazy />
+            <el-icon v-else size="48" color="#c0c4cc"><Picture /></el-icon>
+            <div class="stock-badge" v-if="stockLabel(p.stock)">
+              <el-tag :type="stockLabel(p.stock).type" size="small" effect="dark">{{ stockLabel(p.stock).text }}</el-tag>
+            </div>
           </div>
-          <!-- highlightName contains only <em> tags from ES; safe for v-html -->
-          <div class="product-name" v-html="p.highlightName || p.name"></div>
-          <div class="product-price">¥{{ p.price }}</div>
-          <div class="product-stock">库存：{{ p.stock }}</div>
+          <div class="product-info">
+            <!-- highlightName contains only <em> tags from ES; safe for v-html -->
+            <div class="product-name" v-html="p.highlightName || p.name"></div>
+            <div class="product-price">¥{{ p.price }}</div>
+          </div>
         </el-card>
         <el-empty v-if="!loading && list.length === 0" description="没有找到商品" style="grid-column:1/-1" />
       </div>
@@ -70,6 +75,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
 import { getProducts } from '@/api/product'
 
@@ -80,12 +86,17 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(8)
 
-// E3: filter & aggregation state
 const sortOption = ref('')
 const minPriceInput = ref('')
 const maxPriceInput = ref('')
 const selectedCategory = ref('')
 const categoryBuckets = ref([])
+
+function stockLabel(stock) {
+  if (stock === 0) return { text: '已售罄', type: 'danger' }
+  if (stock <= 10) return { text: `仅剩 ${stock} 件`, type: 'warning' }
+  return null
+}
 
 async function fetchList() {
   loading.value = true
@@ -104,6 +115,8 @@ async function fetchList() {
     list.value = data.products || []
     total.value = data.total || 0
     categoryBuckets.value = data.categoryBuckets || []
+  } catch (err) {
+    ElMessage.error(err.message || '商品加载失败，请刷新重试')
   } finally {
     loading.value = false
   }
@@ -141,8 +154,10 @@ watch(() => route.query.keyword, () => {
 }
 .filter-bar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 16px;
   color: #909399;
   font-size: 14px;
@@ -151,6 +166,7 @@ watch(() => route.query.keyword, () => {
 .active-filter { color: #409eff; }
 .filter-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -198,27 +214,55 @@ watch(() => route.query.keyword, () => {
   gap: 16px;
   min-height: 200px;
 }
-.product-card { cursor: pointer; }
+
+/* 商品卡片 */
+.product-card {
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.product-card:hover {
+  transform: translateY(-3px);
+}
+
 .product-img {
-  height: 150px;
+  aspect-ratio: 3 / 2;
   background: #f5f7fa;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  margin-bottom: 12px;
   overflow: hidden;
+  position: relative;
+}
+.stock-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+.product-info {
+  padding: 12px 14px 14px;
 }
 .product-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  margin-bottom: 6px;
+  color: #303133;
+  margin-bottom: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.45;
+  min-height: 2.9em;
 }
-.product-price { color: #f56c6c; font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-.product-stock { color: #909399; font-size: 12px; }
+.product-price {
+  color: #f56c6c;
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .pagination { margin-top: 24px; justify-content: center; display: flex; }
 :deep(.search-hl) { color: #f56c6c; font-style: normal; font-weight: 600; }
 </style>
