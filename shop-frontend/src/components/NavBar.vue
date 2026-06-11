@@ -72,39 +72,115 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-primary);
   padding: 0 24px;
   position: sticky;
   top: 0;
   z-index: 100;
   height: 60px;
+  box-shadow: 0 2px 12px oklch(0.58 0.22 353deg / 0.3);
 }
+
 .logo {
   font-size: 22px;
-  font-weight: bold;
-  color: var(--color-primary);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
 }
+
 .navbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .cart-link {
-  color: var(--color-muted);
+  color: rgba(255, 255, 255, 0.92);
   display: flex;
   align-items: center;
 }
+
+/* 购物车 badge 在彩色背景上用白底反色 */
+.cart-link :deep(.el-badge__content) {
+  background-color: #fff;
+  color: var(--color-primary);
+  border: none;
+  font-weight: 700;
+  font-size: 11px;
+}
+
 .username {
-  color: var(--color-muted);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 14px;
 }
+
 .orders-link {
   font-size: 14px;
-  color: var(--color-muted);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
 }
 .orders-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 搜索框在彩色背景上 */
+.navbar-center :deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+  border-radius: 20px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.navbar-center :deep(.el-input__wrapper:hover),
+.navbar-center :deep(.el-input__wrapper.is-focus) {
+  background-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65) inset;
+}
+.navbar-center :deep(.el-input__inner) {
+  color: #fff;
+}
+.navbar-center :deep(.el-input__inner::placeholder) {
+  color: rgba(255, 255, 255, 0.6);
+}
+.navbar-center :deep(.el-input__suffix-inner) {
+  color: rgba(255, 255, 255, 0.8);
+}
+.navbar-center :deep(.el-input__clear) {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 登录/注册按钮在彩色 NavBar 上反色 */
+.navbar-right :deep(.el-button--primary) {
+  background: #fff;
   color: var(--color-primary);
+  border-color: transparent;
+  font-weight: 600;
+}
+.navbar-right :deep(.el-button--primary:hover) {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: transparent;
+  color: var(--color-primary-hover);
+}
+.navbar-right :deep(.el-button--default) {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.navbar-right :deep(.el-button--default:hover) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.9);
+  color: #fff;
+}
+
+/* 退出 text button */
+.navbar-right :deep(.el-button.is-text) {
+  color: rgba(255, 255, 255, 0.9);
+}
+.navbar-right :deep(.el-button.is-text:hover) {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.15);
 }
 </style>
