@@ -145,7 +145,7 @@ async function handlePay() {
   justify-content: space-between;
   align-items: center;
 }
-.price { color: #f56c6c; font-size: 24px; font-weight: bold; }
+.price { color: var(--color-price); font-size: 24px; font-weight: 700; }
 .pay-actions {
   display: flex;
   gap: 16px;

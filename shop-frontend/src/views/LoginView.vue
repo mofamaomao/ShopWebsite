@@ -1,24 +1,30 @@
 <template>
   <div class="auth-wrap">
-    <el-card class="auth-card">
-      <template #header><span>登录 ShopDemo</span></template>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <el-form-item label="手机号" prop="phone">
-          <el-input v-model="form.phone" placeholder="请输入手机号" />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" show-password />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="loading" @click="handleSubmit" style="width:100%">
-            登录
-          </el-button>
-        </el-form-item>
-        <el-form-item>
-          <el-link type="primary" @click="$router.push('/register')">没有账号？去注册</el-link>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="brand-circle">S</div>
+        <h2 class="auth-title">欢迎回来</h2>
+        <p class="auth-sub">登录 ShopDemo 继续购物</p>
+      </div>
+      <div class="auth-body">
+        <el-form :model="form" :rules="rules" ref="formRef" label-position="top">
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="form.phone" placeholder="请输入手机号" size="large" />
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="form.password" type="password" show-password size="large" />
+          </el-form-item>
+          <el-form-item style="margin-top:8px">
+            <el-button type="primary" :loading="loading" @click="handleSubmit" size="large" style="width:100%">
+              登录
+            </el-button>
+          </el-form-item>
+          <div class="auth-switch">
+            没有账号？<el-link type="primary" @click="$router.push('/register')">立即注册</el-link>
+          </div>
+        </el-form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -65,7 +71,49 @@ async function handleSubmit() {
   justify-content: center;
   align-items: center;
   min-height: calc(100vh - 60px);
-  background: #f5f7fa;
+  background: var(--color-bg-page);
 }
-.auth-card { width: 400px; }
+.auth-card {
+  width: 400px;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-light);
+  box-shadow: 0 6px 28px oklch(0.58 0.22 353deg / 0.12);
+}
+.auth-header {
+  background: linear-gradient(135deg, var(--color-primary) 0%, oklch(0.68 0.18 353deg) 100%);
+  padding: 32px 24px 24px;
+  text-align: center;
+}
+.brand-circle {
+  width: 54px;
+  height: 54px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 auto 12px;
+}
+.auth-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.auth-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+.auth-body { padding: 28px 28px 24px; }
+.auth-switch {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-subtle);
+  margin-top: 4px;
+}
 </style>
